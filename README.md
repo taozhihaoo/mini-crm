@@ -409,10 +409,11 @@ Everything below reflects what was actually executed, not aspirations.
 - ✅ Backend tests: **131 passed** on SQLite; the same suite ran green against
   a local PostgreSQL 16 instance, including `alembic upgrade head` /
   `downgrade base` / `upgrade head` from an empty database
-- ✅ **GitHub Actions CI ran green on this repository**: the backend job
-  (ruff + pytest on a real PostgreSQL 16 service + Alembic upgrade/downgrade
-  check) and the frontend job (lint, typecheck, vitest, production build)
-  both passed on real runners
+- ✅ **GitHub Actions CI fully green on this repository** (all three jobs):
+  the backend job runs ruff + pytest on a real PostgreSQL 16 service with an
+  Alembic upgrade/downgrade check; the frontend job runs lint, typecheck,
+  vitest and a production build; the secret-scan job runs gitleaks over the
+  full git history - see `docs/screenshots/ci-green.png`
 - ✅ Frontend: 17 Vitest/RTL tests, ESLint, `tsc` typecheck, production build
 - ✅ Live end-to-end run (uvicorn + seeded database + browser): login,
   dashboard, company/contact/lead creation, guarded stage transitions,
@@ -421,6 +422,7 @@ Everything below reflects what was actually executed, not aspirations.
 - ✅ Responsive layout checked at mobile (390px), tablet (820px) and desktop
   sizes against the running application
 - ✅ Secret scanning: gitleaks 8.24.3 over the full git history - no leaks
+  (locally and in CI)
 - ✅ Compose file: semantic validation of services, health checks, startup
   dependencies and runtime secret injection
 
@@ -435,9 +437,6 @@ Everything below reflects what was actually executed, not aspirations.
   provider is implemented and tested against a simulated HTTP transport
   (`httpx.MockTransport`); no live OpenAI request was ever made, and no
   usage/cost numbers are claimed.
-- ⚠️ gitleaks CI job - after replacing the third-party wrapper action with
-  the pinned official binary, the job configuration mirrors the locally
-  verified scan; its green run on GitHub Actions is pending the next push.
 
 ## License
 
