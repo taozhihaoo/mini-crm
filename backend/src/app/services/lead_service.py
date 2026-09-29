@@ -126,6 +126,10 @@ def change_stage(db: Session, lead_id: str, new_stage: LeadStage, actor: User) -
     if lead.archived_at is not None:
         raise BusinessRuleError("Archived leads cannot be moved between stages")
 
+    # Dropping a card back onto its own column is a no-op, not an error.
+    if new_stage == lead.stage:
+        return lead
+
     allowed = ALLOWED_STAGE_TRANSITIONS[lead.stage]
     if new_stage not in allowed:
         raise BusinessRuleError(

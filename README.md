@@ -43,7 +43,7 @@ Highlights:
 - Authentication (JWT, bcrypt-hashed passwords), roles: admin / member
 - Team management and audit log (admin only)
 - REST API with OpenAPI docs at `/docs`
-- Automated tests: 119 backend (pytest) + 17 frontend (Vitest/RTL)
+- Automated tests: 131 backend (pytest) + 17 frontend (Vitest/RTL)
 - Docker Compose (PostgreSQL + FastAPI + nginx), GitHub Actions CI
 
 ## Screenshots
@@ -55,6 +55,10 @@ Highlights:
 | Lead detail + AI | Audit log |
 | --- | --- |
 | ![Lead detail with AI](docs/screenshots/lead-detail-ai.png) | ![Audit log](docs/screenshots/audit-log.png) |
+
+All screenshots come from the real running application (seeded demo data, mock
+AI provider). The layout is responsive; a mobile dashboard capture is included
+at `docs/screenshots/mobile-dashboard.png`.
 
 ## Architecture
 
@@ -132,6 +136,9 @@ Secrets (`SECRET_KEY`, `OPENAI_API_KEY`, `POSTGRES_PASSWORD`) are injected at
 runtime via environment variables - never baked into images. Copy
 [`.env.example`](.env.example) to `.env` to override the demo-only defaults.
 
+> **Note:** live container execution has not been verified in this
+> environment (no Docker available); see [Verification Status](#verification-status).
+
 ```bash
 # Use the real OpenAI integration (requires your own key):
 LLM_PROVIDER=openai OPENAI_API_KEY=sk-... docker compose up
@@ -197,13 +204,22 @@ Environment variables (see `backend/.env.example` and `.env.example`):
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `DATABASE_URL` | `sqlite:///./clientflow.local.db` | SQLAlchemy URL (compose uses PostgreSQL) |
-| `SECRET_KEY` | dev-only value | JWT signing secret - **override outside local demos** |
+| `ENVIRONMENT` | `development` | `development` \| `demo` \| `production` (see guards below) |
+| `SECRET_KEY` | dev-only value | JWT signing secret - **required (non-default) in production** |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `720` | JWT lifetime |
-| `CORS_ORIGINS` | `http://localhost:5173` | Comma-separated allowed origins |
+| `CORS_ORIGINS` | `http://localhost:5173` | Comma-separated allowed origins - inject real domains per deployment |
 | `LLM_PROVIDER` | `mock` | `mock` or `openai` |
 | `OPENAI_API_KEY` | empty | Required only for `openai` (runtime injection) |
 | `OPENAI_MODEL` | `gpt-4o-mini` | Chat model for the OpenAI provider |
 | `SEED_DEMO_DATA` | `false` | Seed fictional demo data on startup (compose: `true`) |
+
+**Environment guards (enforced at startup):**
+
+- `development` / `demo` may use the built-in development secret and seed the
+  fictional demo dataset (the Docker Compose stack runs as `demo`).
+- `production` **refuses to start** with the built-in development secret, and
+  **refuses to start** with `SEED_DEMO_DATA=true` - demo credentials must
+  never exist in a production deployment.
 | `ENVIRONMENT` | `development` | Free-form environment label |
 
 ## Database & Migrations
@@ -254,6 +270,11 @@ specific filters. Errors are safe JSON (`{ "detail": ... }`) - no tracebacks.
   and tests are reproducible without network access.
 - The `openai` provider is implemented and calls the real API, **but requires
   a user-provided API key** - it is never exercised without one.
+  **Live OpenAI API execution has not been verified in this environment**
+  (no API key available); the provider itself is covered by mocked-HTTP tests.
+- Token usage: when the provider reports usage (prompt/completion/total
+  tokens), it is recorded in the AI audit entry; when it does not, the value
+  is `null` - usage is never estimated or invented. Cost is not calculated.
 - Every AI call is audited (`ai.summary`, `ai.priority`, `ai.follow_up_draft`)
   with the provider name; failures return 502 and never modify CRM data.
 - Customer-controlled text is treated as untrusted data: it travels in a
@@ -283,7 +304,7 @@ spreadsheet formula injection.
 
 ```bash
 # Backend (SQLite by default; set TEST_DATABASE_URL for PostgreSQL)
-cd backend && pytest                    # 119 tests
+cd backend && pytest                    # 131 tests
 cd backend && ruff check src tests
 
 # Frontend
@@ -300,7 +321,8 @@ timeouts, prompt-injection isolation) is simulated with `httpx.MockTransport`.
 
 CI (`.github/workflows/ci.yml`) runs ruff + the backend suite **against a real
 PostgreSQL 16 service** (including an Alembic upgrade/downgrade check), plus
-frontend lint/typecheck/tests/build and a gitleaks secret scan.
+frontend lint/typecheck/tests/build and a gitleaks secret scan (pinned
+official binary over the full git history).
 
 ## Security
 
@@ -309,9 +331,12 @@ frontend lint/typecheck/tests/build and a gitleaks secret scan.
 - JWT bearer tokens; no cookies → classical CSRF does not apply; tokens stay
   in `localStorage` (documented trade-off for this scope - rotate
   `SECRET_KEY` and short lifetimes mitigate)
+- **Production startup guards**: `ENVIRONMENT=production` refuses to boot with
+  the built-in development secret or with demo seeding enabled
 - SQL injection: SQLAlchemy bound parameters everywhere; search terms are
   LIKE-escaped
-- XSS: React output escaping; no `dangerouslySetInnerHTML`
+- XSS: React output escaping; no `dangerouslySetInnerHTML`; AI-generated text
+  is rendered as plain text, never as HTML
 - CSV injection: export cells sanitized (see above)
 - File upload: `.csv` extension check, UTF-8 decode guard, row-count cap
 - Authorization: role checks enforced in backend dependencies, never only in
@@ -377,21 +402,42 @@ social integrations, workflow builder, marketplace, subscription management.
 
 ## Verification Status
 
-Verified locally on the development machine (Windows, no Docker available):
+Everything below reflects what was actually executed, not aspirations.
 
-- ✅ `pytest`: 119 passed (SQLite); full suite also executed against a local
-  PostgreSQL 16 instance, including `alembic upgrade head` / `downgrade base`
-- ✅ `ruff check`, `eslint`, `tsc typecheck`, `vitest` (17 passed), `vite build`
-- ✅ Live end-to-end run (uvicorn + seeded database + Vite): login, dashboard,
-  company/contact/lead creation, stage transition, activity, task, all three
-  AI actions, audit trail, CSV import/export, Swagger docs
-- ⚠️ `docker compose up` / Docker image builds: **NOT VERIFIED** locally
-  (Docker is not installed on the development machine). Compose files follow
-  standard patterns (multi-stage builds, health checks, non-root users) and
-  the backend entrypoint sequence (`alembic upgrade head` → optional seed →
-  uvicorn) is the same one exercised in the local live run.
-- ⚠️ GitHub Actions runs: **NOT VERIFIED** (no remote configured); the
-  workflow is standard and its steps mirror the locally verified commands.
+**VERIFIED (executed for real):**
+
+- ✅ Backend tests: **131 passed** on SQLite; the same suite ran green against
+  a local PostgreSQL 16 instance, including `alembic upgrade head` /
+  `downgrade base` / `upgrade head` from an empty database
+- ✅ **GitHub Actions CI ran green on this repository**: the backend job
+  (ruff + pytest on a real PostgreSQL 16 service + Alembic upgrade/downgrade
+  check) and the frontend job (lint, typecheck, vitest, production build)
+  both passed on real runners
+- ✅ Frontend: 17 Vitest/RTL tests, ESLint, `tsc` typecheck, production build
+- ✅ Live end-to-end run (uvicorn + seeded database + browser): login,
+  dashboard, company/contact/lead creation, guarded stage transitions,
+  activity, task, all three AI actions, "Use Draft" flow, audit trail,
+  CSV import/export, Swagger docs
+- ✅ Responsive layout checked at mobile (390px), tablet (820px) and desktop
+  sizes against the running application
+- ✅ Secret scanning: gitleaks 8.24.3 over the full git history - no leaks
+- ✅ Compose file: semantic validation of services, health checks, startup
+  dependencies and runtime secret injection
+
+**NOT VERIFIED (cannot be executed in this environment - never claimed):**
+
+- ⚠️ `docker compose build` / `docker compose up` - **NOT VERIFIED - Docker
+  unavailable** on the development machine. The configuration follows
+  standard patterns (multi-stage builds, non-root users, health checks,
+  persistent volume) and the backend entrypoint sequence was exercised in
+  the local live run, but no container was ever started.
+- ⚠️ Real OpenAI API - **NOT VERIFIED - API key unavailable.** The OpenAI
+  provider is implemented and tested against a simulated HTTP transport
+  (`httpx.MockTransport`); no live OpenAI request was ever made, and no
+  usage/cost numbers are claimed.
+- ⚠️ gitleaks CI job - after replacing the third-party wrapper action with
+  the pinned official binary, the job configuration mirrors the locally
+  verified scan; its green run on GitHub Actions is pending the next push.
 
 ## License
 

@@ -1,3 +1,5 @@
+from datetime import UTC
+
 from tests.conftest import login, make_user
 
 
@@ -40,6 +42,27 @@ def test_me_requires_token(client):
 
 def test_me_rejects_tampered_token(client):
     headers = {"Authorization": "Bearer not-a-real-token"}
+    assert client.get("/api/auth/me", headers=headers).status_code == 401
+
+
+def test_me_rejects_expired_token(client, admin_user):
+    from datetime import datetime, timedelta
+
+    import jwt as pyjwt
+
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    expired = pyjwt.encode(
+        {
+            "sub": str(admin_user.id),
+            "iat": datetime.now(UTC) - timedelta(hours=2),
+            "exp": datetime.now(UTC) - timedelta(hours=1),
+        },
+        settings.secret_key,
+        algorithm=settings.jwt_algorithm,
+    )
+    headers = {"Authorization": f"Bearer {expired}"}
     assert client.get("/api/auth/me", headers=headers).status_code == 401
 
 

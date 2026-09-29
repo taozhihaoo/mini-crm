@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from app.api.router import api_router
-from app.core.config import get_settings
+from app.core.config import get_settings, validate_runtime_settings
 from app.core.exceptions import AppError
 
 logger = logging.getLogger("clientflow")
@@ -39,6 +39,8 @@ def _register_exception_handlers(app: FastAPI) -> None:
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    # Fail fast on unsafe configuration (weak production secret, demo seed in production).
+    validate_runtime_settings(settings)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):

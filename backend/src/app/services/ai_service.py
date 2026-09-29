@@ -78,7 +78,10 @@ class AIService:
             result = self.provider.summarize_lead(context)
         except LLMProviderError as exc:
             raise _translated(exc) from exc
-        self._audit(db, actor, lead, "ai.summary", {"provider": self.provider.name})
+        self._audit(
+            db, actor, lead, "ai.summary",
+            {"provider": self.provider.name, "usage": result.usage},
+        )
         return result
 
     def prioritize_lead(self, db: Session, lead_id: str, actor: User) -> LeadPriorityResult:
@@ -95,7 +98,11 @@ class AIService:
             actor,
             lead,
             "ai.priority",
-            {"provider": self.provider.name, "suggested": result.priority.value},
+            {
+                "provider": self.provider.name,
+                "suggested": result.priority.value,
+                "usage": result.usage,
+            },
         )
         return result
 
@@ -108,7 +115,10 @@ class AIService:
             result = self.provider.draft_follow_up(context)
         except LLMProviderError as exc:
             raise _translated(exc) from exc
-        self._audit(db, actor, lead, "ai.follow_up_draft", {"provider": self.provider.name})
+        self._audit(
+            db, actor, lead, "ai.follow_up_draft",
+            {"provider": self.provider.name, "usage": result.usage},
+        )
         return result
 
     def _audit(self, db: Session, actor: User, lead: Lead, action: str, meta: dict) -> None:

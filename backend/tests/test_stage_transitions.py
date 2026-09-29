@@ -9,6 +9,20 @@ def test_allowed_transition_persists(client, admin_headers, lead_factory):
     assert response.json()["stage"] == "qualified"
 
 
+def test_same_stage_is_a_noop(client, admin_headers, lead_factory):
+    """Dropping a card back onto its own column succeeds without side effects."""
+    lead = lead_factory()
+    response = client.patch(f"/api/leads/{lead['id']}/stage", json={"stage": "new"}, headers=admin_headers)
+    assert response.status_code == 200
+    assert response.json()["stage"] == "new"
+
+    # A no-op must not create an audit entry.
+    response = client.get(
+        "/api/audit-logs", params={"action": "lead.stage_changed"}, headers=admin_headers
+    )
+    assert response.json()["total"] == 0
+
+
 def test_skipping_stages_is_rejected(client, admin_headers, lead_factory):
     lead = lead_factory()
     response = client.patch(f"/api/leads/{lead['id']}/stage", json={"stage": "won"}, headers=admin_headers)

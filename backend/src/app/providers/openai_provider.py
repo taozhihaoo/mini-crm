@@ -52,20 +52,27 @@ class OpenAIProvider(LLMProvider):
         )
 
     def summarize_lead(self, context: LeadContext) -> LeadSummaryResult:
-        data = self._complete_json("summary", context)
-        return self._validate(LeadSummaryResult, data)
+        data, usage = self._complete_json("summary", context)
+        result = self._validate(LeadSummaryResult, data)
+        result.usage = usage
+        return result
 
     def prioritize_lead(self, context: LeadContext) -> LeadPriorityResult:
-        data = self._complete_json("priority", context)
-        return self._validate(LeadPriorityResult, data)
+        data, usage = self._complete_json("priority", context)
+        result = self._validate(LeadPriorityResult, data)
+        result.usage = usage
+        return result
 
     def draft_follow_up(self, context: LeadContext) -> FollowUpDraftResult:
-        data = self._complete_json("follow_up", context)
-        return self._validate(FollowUpDraftResult, data)
+        data, usage = self._complete_json("follow_up", context)
+        result = self._validate(FollowUpDraftResult, data)
+        result.usage = usage
+        return result
 
     # ------------------------------------------------------------------ #
 
-    def _complete_json(self, task: str, context: LeadContext) -> dict:
+    def _complete_json(self, task: str, context: LeadContext) -> tuple[dict, dict | None]:
+        """Run one chat completion task; return (parsed content, provider usage or None)."""
         payload = {
             "model": self.model,
             "messages": [
@@ -107,7 +114,8 @@ class OpenAIProvider(LLMProvider):
             try:
                 body = response.json()
                 content = body["choices"][0]["message"]["content"]
-                return json.loads(content)
+                usage = body.get("usage") if isinstance(body.get("usage"), dict) else None
+                return json.loads(content), usage
             except (httpx.HTTPError, KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
                 last_error = LLMProviderResponseError(
                     f"OpenAI returned an unreadable response: {exc}"

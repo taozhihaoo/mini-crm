@@ -17,11 +17,11 @@ function ActivityRow({ activity }: { activity: Activity }) {
   return (
     <Link
       to={target}
-      className="flex items-start justify-between gap-3 rounded-lg px-2 py-2 hover:bg-slate-50"
+      className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1 rounded-lg px-2 py-2 hover:bg-slate-50"
     >
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1 basis-36">
         <p className="truncate text-sm font-medium text-slate-800">{activity.subject}</p>
-        <p className="text-xs text-slate-500">
+        <p className="truncate text-xs text-slate-500">
           {activity.lead?.title ?? activity.company?.name ?? activity.contact?.full_name ?? "-"}
         </p>
       </div>
@@ -134,8 +134,13 @@ export default function DashboardPage() {
               ) : (
                 <ul className="divide-y divide-slate-50">
                   {bucket.tasks.map((task) => (
-                    <li key={task.id} className="flex items-center justify-between px-4 py-2.5">
-                      <span className="truncate text-sm text-slate-700">{task.title}</span>
+                    <li
+                      key={task.id}
+                      className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-2.5"
+                    >
+                      <span className="min-w-0 flex-1 basis-32 truncate text-sm text-slate-700">
+                        {task.title}
+                      </span>
                       <div className="flex shrink-0 items-center gap-2">
                         <Badge value={task.priority} />
                         <span className="text-xs text-slate-400">{formatDateTime(task.due_at)}</span>

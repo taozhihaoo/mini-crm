@@ -69,6 +69,33 @@ def test_successful_structured_output():
     assert len(calls) == 1
 
 
+def test_token_usage_is_captured_when_provider_reports_it():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"message": {"content": json.dumps({"summary": "Deal summary."})}}],
+                "usage": {"prompt_tokens": 120, "completion_tokens": 34, "total_tokens": 154},
+            },
+            request=httpx.Request("POST", "https://api.openai.com/v1/chat/completions"),
+        )
+
+    result = make_provider(handler).summarize_lead(make_context())
+    assert result.usage == {
+        "prompt_tokens": 120,
+        "completion_tokens": 34,
+        "total_tokens": 154,
+    }
+
+
+def test_usage_is_none_when_provider_omits_it():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return openai_response({"summary": "No usage reported."})
+
+    result = make_provider(handler).summarize_lead(make_context())
+    assert result.usage is None
+
+
 def test_invalid_json_content_raises_response_error():
     def handler(request: httpx.Request) -> httpx.Response:
         return openai_response("this is not json at all {")

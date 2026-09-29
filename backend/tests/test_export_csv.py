@@ -21,16 +21,32 @@ def test_export_leads(client, admin_headers, company_factory, contact_factory, l
 
 
 def test_export_sanitizes_formula_injection(client, admin_headers):
-    client.post(
-        "/api/companies",
-        json={"name": '=HYPERLINK("http://evil.example", "click")'},
-        headers=admin_headers,
-    )
+    dangerous_names = [
+        '=HYPERLINK("http://evil.example", "click")',
+        "+CMD(\"calc\")",
+        "@SUM(1+1)",
+        "-2+3|cmd",
+        "\ttab-prefixed",
+    ]
+    for name in dangerous_names:
+        client.post("/api/companies", json={"name": name}, headers=admin_headers)
+
     response = client.get("/api/export/companies", headers=admin_headers)
-    rows = list(csv.reader(io.StringIO(response.text)))
-    name_cell = rows[1][1]
-    assert name_cell.startswith("'")
-    assert not name_cell.startswith("=")
+    rows = list(csv.reader(io.StringIO(response.text)))[1:]
+    for row in rows:
+        name_cell = row[1]
+        # OWASP mitigation: a leading apostrophe makes Excel treat the cell as
+        # text, so it is never evaluated as a formula.
+        assert name_cell.startswith("'"), f"unsanitized cell: {name_cell!r}"
+
+
+def test_export_sanitizes_leads_value_column(client, admin_headers, company_factory, contact_factory, lead_factory):
+    company = company_factory(name="Sanitize Co")
+    contact = contact_factory(company=company)
+    lead_factory(title="=SUM(A1)", company=company, contact=contact)
+
+    response = client.get("/api/export/leads", headers=admin_headers)
+    assert "'=SUM(A1)" in response.text
 
 
 def test_export_companies_and_contacts_and_tasks(client, admin_headers, company_factory, contact_factory, lead_factory):
