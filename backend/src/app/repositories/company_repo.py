@@ -18,7 +18,9 @@ def get_by_name(db: Session, name: str, *, exclude_id: str | None = None) -> Com
 
 
 def list_companies(db: Session, params: CompanyListParams) -> tuple[list[Company], int]:
-    stmt = select(Company).where(Company.archived_at.is_(None))
+    stmt = select(Company)
+    if not params.include_archived:
+        stmt = stmt.where(Company.archived_at.is_(None))
     if params.search:
         term = contains(params.search)
         stmt = stmt.where(or_(Company.name.ilike(term, escape="\\"), Company.email.ilike(term, escape="\\")))

@@ -64,6 +64,7 @@ class ActivityBrief(BaseModel):
     id: str
     type: str
     subject: str
+    content: str | None = None
     occurred_at: datetime
     lead_id: str | None = None
     contact_id: str | None = None

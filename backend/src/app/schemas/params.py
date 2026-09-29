@@ -26,6 +26,7 @@ class BaseListParams(BaseModel):
 
 class CompanyListParams(BaseListParams):
     industry: str | None = None
+    include_archived: bool = False
     allowed_sort_fields: ClassVar[set[str]] = {"name", "industry", "created_at"}
 
 
