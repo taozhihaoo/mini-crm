@@ -2,6 +2,7 @@ import { useForm } from "react-hook-form";
 import type { Company, Contact } from "../../types";
 import { Field, Input, Select, Textarea } from "../ui";
 import type { ContactPayload } from "../../api/contacts";
+import { emptyToNull } from "../../lib/emptyToNull";
 
 export function ContactForm({
   companies,
@@ -33,7 +34,11 @@ export function ContactForm({
   });
 
   return (
-    <form onSubmit={handleSubmit((values) => onSubmit(values))} className="space-y-4" noValidate>
+    <form
+      onSubmit={handleSubmit((values) => onSubmit(emptyToNull(values)))}
+      className="space-y-4"
+      noValidate
+    >
       <Field label="Company" required error={formState.errors.company_id?.message}>
         <Select {...register("company_id", { required: "Company is required" })} data-testid="contact-company">
           <option value="">Select a company…</option>

@@ -1,0 +1,61 @@
+# ClientFlow CRM - full stack for local development and demo.
+#
+#   docker compose up --build
+#
+# App:      http://localhost:3000   (frontend, proxied API)
+# API:      http://localhost:8000/api/health
+# API docs: http://localhost:8000/docs
+#
+# Default login after seeding: admin@clientflow.dev / Admin123!  (DEMO ONLY)
+#
+# Secrets are injected at runtime via environment variables - never baked
+# into images. Provide a real key with: LLM_PROVIDER=openai OPENAI_API_KEY=... docker compose up
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: clientflow
+      # Demo-only default; override with POSTGRES_PASSWORD in a shared environment.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-clientflow-demo}
+      POSTGRES_DB: clientflow
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clientflow -d clientflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://clientflow:${POSTGRES_PASSWORD:-clientflow-demo}@db:5432/clientflow
+      # Demo-only default; ALWAYS override SECRET_KEY outside local demos.
+      SECRET_KEY: ${SECRET_KEY:-dev-only-insecure-secret-change-me}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-720}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
+      # Mock AI by default: the full product works offline with no API key.
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:8080"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pgdata:

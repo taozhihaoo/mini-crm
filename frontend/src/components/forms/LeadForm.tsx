@@ -62,6 +62,7 @@ export function LeadForm({
         onSubmit({
           ...values,
           description: values.description || null,
+          value: values.value === "" ? "0" : values.value,
           expected_close_date: values.expected_close_date || null,
           owner_id: values.owner_id || undefined,
         }),

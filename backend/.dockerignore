@@ -1,0 +1,16 @@
+.pytest_cache
+.ruff_cache
+.venv
+venv
+__pycache__
+*.pyc
+tests
+.env
+.env.*
+*.db
+*.sqlite3
+Dockerfile
+entrypoint.sh
+.dockerignore
+htmlcov
+.coverage

@@ -2,6 +2,7 @@ import { useForm } from "react-hook-form";
 import type { Company } from "../../types";
 import { Field, Input, Textarea } from "../ui";
 import type { CompanyPayload } from "../../api/companies";
+import { emptyToNull } from "../../lib/emptyToNull";
 
 export function CompanyForm({
   initial,
@@ -29,7 +30,11 @@ export function CompanyForm({
   });
 
   return (
-    <form onSubmit={handleSubmit((values) => onSubmit(values))} className="space-y-4" noValidate>
+    <form
+      onSubmit={handleSubmit((values) => onSubmit(emptyToNull(values)))}
+      className="space-y-4"
+      noValidate
+    >
       <Field label="Name" required error={formState.errors.name?.message}>
         <Input
           {...register("name", { required: "Name is required", maxLength: 255 })}

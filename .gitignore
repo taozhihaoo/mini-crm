@@ -28,3 +28,7 @@ coverage/
 .DS_Store
 Thumbs.db
 *.log
+.pg-tmp/
+
+# TypeScript incremental build info
+*.tsbuildinfo
