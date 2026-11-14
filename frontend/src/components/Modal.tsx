@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Button } from "./ui";
+import { Button, Icon } from "./ui";
+import { useI18n } from "../i18n";
 
 export function Modal({
   open,
@@ -16,6 +17,8 @@ export function Modal({
   children: ReactNode;
   wide?: boolean;
 }) {
+  const { t } = useI18n();
+
   useEffect(() => {
     if (!open) return;
     const handler = (event: KeyboardEvent) => {
@@ -28,7 +31,7 @@ export function Modal({
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 p-4 sm:p-8">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#10162b]/55 p-4 backdrop-blur-[3px] sm:p-8">
       <div
         className="absolute inset-0"
         aria-hidden="true"
@@ -39,20 +42,20 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`relative my-4 w-full ${wide ? "max-w-3xl" : "max-w-lg"} rounded-xl bg-white shadow-xl`}
+        className={`cf-fade relative my-4 w-full ${wide ? "max-w-3xl" : "max-w-lg"} overflow-hidden rounded-2xl bg-white shadow-[0_32px_80px_-24px_rgba(16,22,43,0.55)]`}
       >
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-          <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+        <div className="flex items-center justify-between border-b cf-divider px-5 py-4">
+          <h2 className="text-[15px] font-semibold tracking-tight text-[#1b2439]">{title}</h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            aria-label={t("Close")}
+            className="cf-icon-btn"
           >
-            ✕
+            <Icon name="x" className="h-4 w-4" />
           </button>
         </div>
-        <div className="px-5 py-4">{children}</div>
+        <div className="px-5 py-5">{children}</div>
       </div>
     </div>,
     document.body,
@@ -63,7 +66,7 @@ export function ConfirmDialog({
   open,
   title,
   message,
-  confirmLabel = "Confirm",
+  confirmLabel,
   danger,
   busy,
   onConfirm,
@@ -78,15 +81,25 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <Modal open={open} title={title} onClose={onCancel}>
-      <p className="text-sm text-slate-600">{message}</p>
-      <div className="mt-5 flex justify-end gap-2">
+      <div className="flex gap-3">
+        <span
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+            danger ? "bg-rose-50 text-rose-500" : "bg-indigo-50 text-indigo-500"
+          }`}
+        >
+          <Icon name={danger ? "alert" : "info"} className="h-4 w-4" />
+        </span>
+        <p className="pt-1 text-[13.5px] leading-relaxed text-[#59637c]">{message}</p>
+      </div>
+      <div className="mt-6 flex justify-end gap-2">
         <Button variant="secondary" onClick={onCancel} disabled={busy}>
-          Cancel
+          {t("Cancel")}
         </Button>
         <Button variant={danger ? "danger" : "primary"} onClick={onConfirm} disabled={busy}>
-          {busy ? "Working…" : confirmLabel}
+          {busy ? t("Working…") : (confirmLabel ?? t("Confirm"))}
         </Button>
       </div>
     </Modal>

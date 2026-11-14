@@ -4,32 +4,34 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { changePassword, createUser, listAuditLogs, listUsers, updateUser } from "../api/users";
 import { useAuth } from "../context/AuthContext";
 import type { Role, User } from "../types";
-import { Badge, Button, Field, Input, Select } from "../components/ui";
+import { Badge, Button, Field, Icon, Input, PageHeader, Select } from "../components/ui";
 import { Pagination } from "../components/Pagination";
 import { ErrorState, LoadingState } from "../components/States";
 import { useToast } from "../components/Toast";
 import { formatDateTime } from "../lib/format";
+import { useI18n } from "../i18n";
 
 type Tab = "profile" | "users" | "audit";
 
 export default function SettingsPage() {
   const { isAdmin } = useAuth();
+  const { t } = useI18n();
   const [tab, setTab] = useState<Tab>("profile");
 
-  const tabs: { id: Tab; label: string; adminOnly?: boolean }[] = [
-    { id: "profile", label: "Profile" },
-    { id: "users", label: "Team", adminOnly: true },
-    { id: "audit", label: "Audit Log", adminOnly: true },
+  const tabs: { id: Tab; label: string; icon: "user" | "contact" | "shield"; adminOnly?: boolean }[] = [
+    { id: "profile", label: "Profile", icon: "user" },
+    { id: "users", label: "Team", icon: "contact", adminOnly: true },
+    { id: "audit", label: "Audit Log", icon: "shield", adminOnly: true },
   ];
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-bold text-slate-900">Settings</h1>
-        <p className="text-sm text-slate-500">Your account, team and system audit trail.</p>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title={t("Settings")}
+        subtitle={t("Your account, team and system audit trail.")}
+      />
 
-      <div className="flex gap-1 border-b border-slate-200">
+      <div className="flex gap-1 border-b cf-divider">
         {tabs
           .filter((entry) => !entry.adminOnly || isAdmin)
           .map((entry) => (
@@ -37,13 +39,14 @@ export default function SettingsPage() {
               key={entry.id}
               type="button"
               onClick={() => setTab(entry.id)}
-              className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+              className={`-mb-px flex items-center gap-2 border-b-2 px-4 py-2.5 text-[13px] font-semibold transition-colors ${
                 tab === entry.id
                   ? "border-indigo-600 text-indigo-600"
-                  : "border-transparent text-slate-500 hover:text-slate-700"
+                  : "border-transparent text-[#8a94ac] hover:text-[#48526b]"
               }`}
             >
-              {entry.label}
+              <Icon name={entry.icon} className="h-4 w-4" />
+              {t(entry.label)}
             </button>
           ))}
       </div>
@@ -58,6 +61,7 @@ export default function SettingsPage() {
 function ProfilePanel() {
   const { user } = useAuth();
   const toast = useToast();
+  const { t } = useI18n();
   const { register, handleSubmit, reset, formState } = useForm<{
     current_password: string;
     new_password: string;
@@ -68,27 +72,27 @@ function ProfilePanel() {
     mutationFn: (values: { current_password: string; new_password: string }) =>
       changePassword(values.current_password, values.new_password),
     onSuccess: () => {
-      toast.push("success", "Password changed");
+      toast.push("success", t("Password changed"));
       reset();
     },
     onError: (err: Error) => toast.push("error", err.message),
   });
 
   return (
-    <div className="max-w-md space-y-4">
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h3 className="text-sm font-semibold text-slate-800">Account</h3>
-        <dl className="mt-3 space-y-2 text-sm">
+    <div className="max-w-md space-y-5">
+      <div className="cf-card p-5">
+        <h3 className="cf-section-title mb-4">{t("Account")}</h3>
+        <dl className="space-y-3 text-[13px]">
           <div className="flex justify-between">
-            <dt className="text-slate-500">Name</dt>
-            <dd className="font-medium text-slate-800">{user?.full_name}</dd>
+            <dt className="text-[#8a94ac]">{t("Name")}</dt>
+            <dd className="font-semibold text-[#303b54]">{user?.full_name}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-slate-500">Email</dt>
-            <dd className="font-medium text-slate-800">{user?.email}</dd>
+            <dt className="text-[#8a94ac]">{t("Email")}</dt>
+            <dd className="font-semibold text-[#303b54]">{user?.email}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-slate-500">Role</dt>
+            <dt className="text-[#8a94ac]">{t("Role")}</dt>
             <dd>{user && <Badge value={user.role} />}</dd>
           </div>
         </dl>
@@ -97,38 +101,41 @@ function ProfilePanel() {
       <form
         onSubmit={handleSubmit((values) => {
           if (values.new_password !== values.confirm_password) {
-            toast.push("error", "New passwords do not match");
+            toast.push("error", t("New passwords do not match"));
             return;
           }
           mutation.mutate(values);
         })}
-        className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+        className="cf-card p-5"
         noValidate
       >
-        <h3 className="text-sm font-semibold text-slate-800">Change password</h3>
-        <div className="mt-3 space-y-3">
-          <Field label="Current password" required error={formState.errors.current_password?.message}>
+        <div className="mb-4 flex items-center gap-2">
+          <Icon name="lock" className="h-4 w-4 text-indigo-500" />
+          <h3 className="cf-section-title">{t("Change password")}</h3>
+        </div>
+        <div className="space-y-4">
+          <Field label={t("Current password")} required error={formState.errors.current_password?.message}>
             <Input
-              {...register("current_password", { required: "Current password is required" })}
+              {...register("current_password", { required: t("Current password is required") })}
               type="password"
               autoComplete="current-password"
             />
           </Field>
-          <Field label="New password" required error={formState.errors.new_password?.message}>
+          <Field label={t("New password")} required error={formState.errors.new_password?.message}>
             <Input
               {...register("new_password", {
-                required: "New password is required",
-                minLength: { value: 8, message: "At least 8 characters" },
+                required: t("New password is required"),
+                minLength: { value: 8, message: t("At least 8 characters") },
               })}
               type="password"
               autoComplete="new-password"
             />
           </Field>
-          <Field label="Confirm new password" required>
+          <Field label={t("Confirm new password")} required>
             <Input {...register("confirm_password")} type="password" autoComplete="new-password" />
           </Field>
           <Button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? "Saving…" : "Change password"}
+            {mutation.isPending ? t("Saving…") : t("Change password")}
           </Button>
         </div>
       </form>
@@ -139,6 +146,7 @@ function ProfilePanel() {
 function UsersPanel() {
   const queryClient = useQueryClient();
   const toast = useToast();
+  const { t } = useI18n();
   const [page, setPage] = useState(1);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -157,7 +165,7 @@ function UsersPanel() {
     mutationFn: createUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
-      toast.push("success", "Team member added");
+      toast.push("success", t("Team member added"));
       reset();
     },
     onError: (err: Error) => toast.push("error", err.message),
@@ -168,7 +176,7 @@ function UsersPanel() {
       updateUser(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
-      toast.push("success", "Member updated");
+      toast.push("success", t("Member updated"));
     },
     onError: (err: Error) => toast.push("error", err.message),
   });
@@ -177,42 +185,48 @@ function UsersPanel() {
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="lg:col-span-2">
         {isLoading ? (
-          <LoadingState label="Loading team…" />
+          <LoadingState label={t("Loading team…")} />
         ) : isError || !data ? (
           <ErrorState message={error instanceof Error ? error.message : undefined} onRetry={() => refetch()} />
         ) : (
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div className="cf-card overflow-hidden">
+            <table className="cf-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Member</th>
-                  <th className="px-4 py-3">Role</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th>{t("Member")}</th>
+                  <th>{t("Role")}</th>
+                  <th>{t("Status")}</th>
+                  <th className="!text-right">{t("Actions")}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody>
                 {data.items.map((user: User) => (
                   <tr key={user.id}>
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-slate-800">{user.full_name}</p>
-                      <p className="text-xs text-slate-500">{user.email}</p>
+                    <td>
+                      <p className="font-semibold text-[#303b54]">{user.full_name}</p>
+                      <p className="text-[11.5px] text-[#98a1b8]">{user.email}</p>
                     </td>
-                    <td className="px-4 py-3">
+                    <td>
                       <Badge value={user.role} />
                     </td>
-                    <td className="px-4 py-3">
+                    <td>
                       {user.is_active ? (
-                        <span className="text-xs font-medium text-emerald-600">Active</span>
+                        <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-emerald-600">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          {t("Active")}
+                        </span>
                       ) : (
-                        <span className="text-xs font-medium text-slate-400">Inactive</span>
+                        <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#a3abc0]">
+                          <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+                          {t("Inactive")}
+                        </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="!text-right">
                       <div className="flex justify-end gap-1">
                         <button
                           type="button"
-                          className="rounded px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
+                          className="cf-btn cf-btn-ghost !px-2 !py-1 !text-[12px] !text-indigo-600"
                           disabled={updateMutation.isPending}
                           onClick={() =>
                             updateMutation.mutate({
@@ -221,17 +235,17 @@ function UsersPanel() {
                             })
                           }
                         >
-                          {user.role === "admin" ? "Make member" : "Make admin"}
+                          {user.role === "admin" ? t("Make member") : t("Make admin")}
                         </button>
                         <button
                           type="button"
-                          className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                          className="cf-btn cf-btn-ghost !px-2 !py-1 !text-[12px] !text-rose-600"
                           disabled={updateMutation.isPending}
                           onClick={() =>
                             updateMutation.mutate({ id: user.id, payload: { is_active: !user.is_active } })
                           }
                         >
-                          {user.is_active ? "Deactivate" : "Activate"}
+                          {user.is_active ? t("Deactivate") : t("Activate")}
                         </button>
                       </div>
                     </td>
@@ -246,37 +260,34 @@ function UsersPanel() {
 
       <form
         onSubmit={handleSubmit((values) => createMutation.mutate(values))}
-        className="h-fit rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+        className="cf-card h-fit p-5"
         noValidate
       >
-        <h3 className="text-sm font-semibold text-slate-800">Add team member</h3>
-        <div className="mt-3 space-y-3">
-          <Field label="Full name" required error={formState.errors.full_name?.message}>
-            <Input {...register("full_name", { required: "Name is required" })} />
+        <h3 className="cf-section-title mb-4">{t("Add team member")}</h3>
+        <div className="space-y-4">
+          <Field label={t("Full name")} required error={formState.errors.full_name?.message}>
+            <Input {...register("full_name", { required: t("Name is required") })} />
           </Field>
-          <Field label="Email" required error={formState.errors.email?.message}>
-            <Input
-              {...register("email", { required: "Email is required" })}
-              type="email"
-            />
+          <Field label={t("Email")} required error={formState.errors.email?.message}>
+            <Input {...register("email", { required: t("Email is required") })} type="email" />
           </Field>
-          <Field label="Temporary password" required error={formState.errors.password?.message}>
+          <Field label={t("Temporary password")} required error={formState.errors.password?.message}>
             <Input
               {...register("password", {
-                required: "Password is required",
-                minLength: { value: 8, message: "At least 8 characters" },
+                required: t("Password is required"),
+                minLength: { value: 8, message: t("At least 8 characters") },
               })}
               type="password"
             />
           </Field>
-          <Field label="Role">
+          <Field label={t("Role")}>
             <Select {...register("role")}>
-              <option value="member">Member</option>
-              <option value="admin">Admin</option>
+              <option value="member">{t("member")}</option>
+              <option value="admin">{t("admin")}</option>
             </Select>
           </Field>
-          <Button type="submit" disabled={createMutation.isPending}>
-            {createMutation.isPending ? "Adding…" : "Add member"}
+          <Button type="submit" className="w-full" disabled={createMutation.isPending}>
+            {createMutation.isPending ? t("Adding…") : t("Add member")}
           </Button>
         </div>
       </form>
@@ -285,6 +296,7 @@ function UsersPanel() {
 }
 
 function AuditPanel() {
+  const { t } = useI18n();
   const [page, setPage] = useState(1);
   const [action, setAction] = useState("");
 
@@ -294,50 +306,48 @@ function AuditPanel() {
   });
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="flex items-center gap-3">
         <Input
           value={action}
           onChange={(event) => setAction(event.target.value)}
-          placeholder="Filter by action (e.g. lead.stage_changed)…"
-          className="max-w-sm"
+          placeholder={t("Filter by action (e.g. lead.stage_changed)…")}
+          className="!max-w-sm"
         />
       </div>
 
       {isLoading ? (
-        <LoadingState label="Loading audit log…" />
+        <LoadingState label={t("Loading audit log…")} />
       ) : isError || !data ? (
         <ErrorState message={error instanceof Error ? error.message : undefined} onRetry={() => refetch()} />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="cf-card overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <table className="cf-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">When</th>
-                  <th className="px-4 py-3">User</th>
-                  <th className="px-4 py-3">Action</th>
-                  <th className="px-4 py-3">Entity</th>
-                  <th className="px-4 py-3">Details</th>
+                  <th>{t("When")}</th>
+                  <th>{t("User")}</th>
+                  <th>{t("Action")}</th>
+                  <th>{t("Entity")}</th>
+                  <th>{t("Details")}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody>
                 {data.items.map((entry) => (
                   <tr key={entry.id}>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-slate-500">
-                      {formatDateTime(entry.created_at)}
-                    </td>
-                    <td className="px-4 py-2.5 text-slate-700">{entry.user_email ?? "system"}</td>
-                    <td className="px-4 py-2.5">
-                      <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-700">
+                    <td className="!whitespace-nowrap !text-[#8a94ac]">{formatDateTime(entry.created_at)}</td>
+                    <td className="!font-medium !text-[#48526b]">{entry.user_email ?? t("system")}</td>
+                    <td>
+                      <code className="rounded-md bg-[#f0f2f8] px-2 py-0.5 font-mono text-[11.5px] text-[#48526b]">
                         {entry.action}
                       </code>
                     </td>
-                    <td className="px-4 py-2.5 text-slate-600">
+                    <td>
                       {entry.entity_type}
                       {entry.entity_id ? ` (${entry.entity_id.slice(0, 8)}…)` : ""}
                     </td>
-                    <td className="max-w-xs truncate px-4 py-2.5 font-mono text-xs text-slate-500">
+                    <td className="!max-w-xs !truncate !font-mono !text-[11px] !text-[#8a94ac]">
                       {entry.metadata ? JSON.stringify(entry.metadata) : "-"}
                     </td>
                   </tr>

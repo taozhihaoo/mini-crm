@@ -11,7 +11,7 @@ import {
 import type { CompanyPayload } from "../api/companies";
 import { downloadFile } from "../api/client";
 import type { Company, ImportSummary } from "../types";
-import { Button, Input, Spinner } from "../components/ui";
+import { Button, Icon, Input, PageHeader, Spinner } from "../components/ui";
 import { ConfirmDialog, Modal } from "../components/Modal";
 import { Pagination } from "../components/Pagination";
 import { EmptyState, ErrorState, LoadingState } from "../components/States";
@@ -19,12 +19,14 @@ import { CompanyForm } from "../components/forms/CompanyForm";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useToast } from "../components/Toast";
 import { formatDate } from "../lib/format";
+import { useI18n } from "../i18n";
 
 const PAGE_SIZE = 10;
 
 export default function CompaniesPage() {
   const queryClient = useQueryClient();
   const toast = useToast();
+  const { t } = useI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [searchInput, setSearchInput] = useState("");
@@ -64,7 +66,7 @@ export default function CompaniesPage() {
       invalidate();
       setFormOpen(false);
       setEditing(null);
-      toast.push("success", editing ? "Company updated" : "Company created");
+      toast.push("success", editing ? t("Company updated") : t("Company created"));
     },
     onError: (err: Error) => toast.push("error", err.message),
   });
@@ -75,7 +77,7 @@ export default function CompaniesPage() {
     onSuccess: (_data, company) => {
       invalidate();
       setArchiveTarget(null);
-      toast.push("success", company.archived ? "Company restored" : "Company archived");
+      toast.push("success", company.archived ? t("Company restored") : t("Company archived"));
     },
     onError: (err: Error) => toast.push("error", err.message),
   });
@@ -87,7 +89,11 @@ export default function CompaniesPage() {
       setImportSummary(summary);
       toast.push(
         summary.errors > 0 ? "info" : "success",
-        `Imported ${summary.imported}, skipped ${summary.skipped}, errors ${summary.errors}`,
+        t("Imported {imported}, skipped {skipped}, errors {errors}", {
+          imported: summary.imported,
+          skipped: summary.skipped,
+          errors: summary.errors,
+        }),
       );
     },
     onError: (err: Error) => toast.push("error", err.message),
@@ -102,7 +108,7 @@ export default function CompaniesPage() {
       const date = new Date().toISOString().slice(0, 10);
       await downloadFile("/export/companies", `companies_${date}.csv`);
     } catch (err) {
-      toast.push("error", err instanceof Error ? err.message : "Export failed");
+      toast.push("error", err instanceof Error ? err.message : t("Export failed"));
     }
   };
 
@@ -113,74 +119,88 @@ export default function CompaniesPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Companies</h1>
-          <p className="text-sm text-slate-500">Track the businesses you sell to.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => fileInputRef.current?.click()} disabled={importMutation.isPending}>
-            {importMutation.isPending ? <Spinner className="mr-1" /> : null} Import CSV
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv,text/csv"
-            className="hidden"
-            onChange={(event) => handleImportFile(event.target.files?.[0])}
-            data-testid="company-import-input"
-          />
-          <Button variant="secondary" onClick={handleExport}>
-            Export CSV
-          </Button>
-          <Button
-            onClick={() => {
-              setEditing(null);
-              setFormOpen(true);
-            }}
-            data-testid="company-create"
-          >
-            New Company
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title={t("Companies")}
+        subtitle={t("Track the businesses you sell to.")}
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={importMutation.isPending}
+            >
+              {importMutation.isPending ? <Spinner /> : <Icon name="upload" className="h-4 w-4" />}
+              {t("Import CSV")}
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              onChange={(event) => handleImportFile(event.target.files?.[0])}
+              data-testid="company-import-input"
+            />
+            <Button variant="secondary" onClick={handleExport}>
+              <Icon name="download" className="h-4 w-4" />
+              {t("Export CSV")}
+            </Button>
+            <Button
+              onClick={() => {
+                setEditing(null);
+                setFormOpen(true);
+              }}
+              data-testid="company-create"
+            >
+              <Icon name="plus" className="h-4 w-4" />
+              {t("New Company")}
+            </Button>
+          </>
+        }
+      />
 
       <div className="flex flex-wrap items-center gap-3">
         <Input
           value={searchInput}
           onChange={(event) => setSearchInput(event.target.value)}
-          placeholder="Search by name or email…"
-          className="max-w-xs"
+          placeholder={t("Search by name or email…")}
+          className="!max-w-xs"
           data-testid="company-search"
         />
         <Input
           value={industry}
           onChange={(event) => setIndustry(event.target.value)}
-          placeholder="Filter by industry…"
-          className="max-w-44"
+          placeholder={t("Filter by industry…")}
+          className="!max-w-[190px]"
         />
-        <label className="flex items-center gap-2 text-sm text-slate-600">
+        <label className="flex cursor-pointer select-none items-center gap-2 text-[12.5px] font-medium text-[#6b7590]">
           <input
             type="checkbox"
             checked={includeArchived}
             onChange={(event) => setIncludeArchived(event.target.checked)}
+            className="h-4 w-4 rounded border-[#cbd2e3] accent-indigo-600"
           />
-          Show archived
+          {t("Show archived")}
         </label>
       </div>
 
       {importSummary && (
-        <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900" data-testid="import-summary">
+        <div
+          className="rounded-2xl border border-indigo-200 bg-indigo-50/70 p-4 text-[13px] text-indigo-900"
+          data-testid="import-summary"
+        >
           <p className="font-semibold">
-            Imported: {importSummary.imported} · Skipped: {importSummary.skipped} · Errors:{" "}
-            {importSummary.errors}
+            {t("Imported: {imported} · Skipped: {skipped} · Errors: {errors}", {
+              imported: importSummary.imported,
+              skipped: importSummary.skipped,
+              errors: importSummary.errors,
+            })}
           </p>
           {importSummary.error_details.length > 0 && (
-            <ul className="mt-2 list-inside list-disc space-y-0.5 text-xs">
+            <ul className="mt-2 list-inside list-disc space-y-0.5 text-[12px]">
               {importSummary.error_details.slice(0, 10).map((detail, index) => (
                 <li key={index}>
-                  Row {detail.row}
+                  {t("Row {row}", { row: detail.row })}
                   {detail.field ? ` (${detail.field})` : ""}: {detail.message}
                 </li>
               ))}
@@ -188,71 +208,76 @@ export default function CompaniesPage() {
           )}
           <button
             type="button"
-            className="mt-2 text-xs font-medium text-sky-700 underline"
+            className="mt-2 text-[12px] font-semibold text-indigo-700 underline"
             onClick={() => setImportSummary(null)}
           >
-            Dismiss
+            {t("Dismiss")}
           </button>
         </div>
       )}
 
       {isLoading ? (
-        <LoadingState label="Loading companies…" />
+        <LoadingState label={t("Loading companies…")} />
       ) : isError || !data ? (
         <ErrorState message={error instanceof Error ? error.message : undefined} onRetry={() => refetch()} />
       ) : data.items.length === 0 ? (
         <EmptyState
-          title="No companies found"
-          hint="Create a company or adjust your filters."
-          action={<Button onClick={() => setFormOpen(true)}>New Company</Button>}
+          title={t("No companies found")}
+          hint={t("Create a company or adjust your filters.")}
+          action={<Button onClick={() => setFormOpen(true)}>{t("New Company")}</Button>}
         />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="cf-card overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <table className="cf-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Industry</th>
-                  <th className="hidden px-4 py-3 md:table-cell">Email</th>
-                  <th className="hidden px-4 py-3 lg:table-cell">Phone</th>
-                  <th className="px-4 py-3">Created</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th>{t("Name")}</th>
+                  <th>{t("Industry")}</th>
+                  <th className="hidden md:table-cell">{t("Email")}</th>
+                  <th className="hidden lg:table-cell">{t("Phone")}</th>
+                  <th>{t("Created")}</th>
+                  <th className="!text-right">{t("Actions")}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody>
                 {data.items.map((company) => (
                   <tr key={company.id} className={company.archived ? "opacity-60" : undefined}>
-                    <td className="px-4 py-3 font-medium text-slate-800">
-                      {company.name}
-                      {company.archived && (
-                        <span className="ml-2 rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600">
-                          Archived
+                    <td className="!font-semibold !text-[#27314a]">
+                      <span className="flex items-center gap-2">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-[11px] font-bold text-indigo-600">
+                          {company.name.slice(0, 2).toUpperCase()}
                         </span>
-                      )}
+                        {company.name}
+                        {company.archived && (
+                          <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
+                            {t("Archived")}
+                          </span>
+                        )}
+                      </span>
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{company.industry ?? "-"}</td>
-                    <td className="hidden px-4 py-3 text-slate-600 md:table-cell">{company.email ?? "-"}</td>
-                    <td className="hidden px-4 py-3 text-slate-600 lg:table-cell">{company.phone ?? "-"}</td>
-                    <td className="px-4 py-3 text-slate-500">{formatDate(company.created_at)}</td>
-                    <td className="px-4 py-3 text-right">
+                    <td>{company.industry ?? "-"}</td>
+                    <td className="hidden md:table-cell">{company.email ?? "-"}</td>
+                    <td className="hidden lg:table-cell">{company.phone ?? "-"}</td>
+                    <td className="!text-[#98a1b8]">{formatDate(company.created_at)}</td>
+                    <td className="!text-right">
                       <div className="flex justify-end gap-1">
                         <button
                           type="button"
-                          className="rounded px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
+                          className="cf-btn cf-btn-ghost !px-2 !py-1 !text-[12px] !text-indigo-600"
                           onClick={() => {
                             setEditing(company);
                             setFormOpen(true);
                           }}
                         >
-                          Edit
+                          {t("Edit")}
                         </button>
                         <button
                           type="button"
-                          className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                          className="cf-btn cf-btn-ghost !px-2 !py-1 !text-[12px] !text-rose-600"
                           onClick={() => setArchiveTarget(company)}
                         >
-                          {company.archived ? "Restore" : "Archive"}
+                          {company.archived ? t("Restore") : t("Archive")}
                         </button>
                       </div>
                     </td>
@@ -267,7 +292,7 @@ export default function CompaniesPage() {
 
       <Modal
         open={formOpen}
-        title={editing ? "Edit company" : "New company"}
+        title={editing ? t("Edit company") : t("New company")}
         onClose={() => {
           setFormOpen(false);
           setEditing(null);
@@ -287,13 +312,15 @@ export default function CompaniesPage() {
 
       <ConfirmDialog
         open={archiveTarget !== null}
-        title={archiveTarget?.archived ? "Restore company" : "Archive company"}
+        title={archiveTarget?.archived ? t("Restore company") : t("Archive company")}
         message={
           archiveTarget?.archived
-            ? `Restore "${archiveTarget?.name}" so it appears in lists again?`
-            : `Archive "${archiveTarget?.name}"? It will be hidden from lists but its data is kept.`
+            ? t('Restore "{name}" so it appears in lists again?', { name: archiveTarget?.name ?? "" })
+            : t('Archive "{name}"? It will be hidden from lists but its data is kept.', {
+                name: archiveTarget?.name ?? "",
+              })
         }
-        confirmLabel={archiveTarget?.archived ? "Restore" : "Archive"}
+        confirmLabel={archiveTarget?.archived ? t("Restore") : t("Archive")}
         danger={!archiveTarget?.archived}
         busy={archiveMutation.isPending}
         onConfirm={() => archiveTarget && archiveMutation.mutate(archiveTarget)}

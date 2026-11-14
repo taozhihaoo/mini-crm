@@ -7,7 +7,7 @@ import { listLeads } from "../api/leads";
 import { listContacts } from "../api/contacts";
 import { TASK_STATUSES } from "../types";
 import type { Task, TaskStatus } from "../types";
-import { Badge, Button, Input, Select } from "../components/ui";
+import { Badge, Button, Icon, Input, PageHeader, Select } from "../components/ui";
 import { ConfirmDialog, Modal } from "../components/Modal";
 import { Pagination } from "../components/Pagination";
 import { EmptyState, ErrorState, LoadingState } from "../components/States";
@@ -15,12 +15,14 @@ import { TaskForm } from "../components/forms/TaskForm";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useToast } from "../components/Toast";
 import { formatDateTime } from "../lib/format";
+import { useI18n } from "../i18n";
 
 const PAGE_SIZE = 12;
 
 export default function TasksPage() {
   const queryClient = useQueryClient();
   const toast = useToast();
+  const { t } = useI18n();
 
   const [searchInput, setSearchInput] = useState("");
   const search = useDebouncedValue(searchInput);
@@ -82,7 +84,7 @@ export default function TasksPage() {
       invalidate();
       setFormOpen(false);
       setEditing(null);
-      toast.push("success", editing ? "Task updated" : "Task created");
+      toast.push("success", editing ? t("Task updated") : t("Task created"));
     },
     onError: (err: Error) => toast.push("error", err.message),
   });
@@ -93,7 +95,7 @@ export default function TasksPage() {
     onSuccess: (_data, variables) => {
       invalidate();
       setStatusTarget(null);
-      toast.push("success", `Task ${variables.status}`);
+      toast.push("success", t("Task {status}", { status: t(variables.status) }));
     },
     onError: (err: Error) => toast.push("error", err.message),
   });
@@ -103,77 +105,88 @@ export default function TasksPage() {
   }, [search, status, due]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Tasks</h1>
-          <p className="text-sm text-slate-500">Follow-ups and reminders so nothing slips through.</p>
-        </div>
-        <Button
-          onClick={() => {
-            setEditing(null);
-            setFormOpen(true);
-          }}
-          data-testid="task-create"
-        >
-          New Task
-        </Button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title={t("Tasks")}
+        subtitle={t("Follow-ups and reminders so nothing slips through.")}
+        actions={
+          <Button
+            onClick={() => {
+              setEditing(null);
+              setFormOpen(true);
+            }}
+            data-testid="task-create"
+          >
+            <Icon name="plus" className="h-4 w-4" />
+            {t("New Task")}
+          </Button>
+        }
+      />
 
       <div className="flex flex-wrap items-center gap-3">
+        <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#e5e9f2] bg-white text-[#8a94ac]">
+          <Icon name="filter" className="h-4 w-4" />
+        </span>
         <Input
           value={searchInput}
           onChange={(event) => setSearchInput(event.target.value)}
-          placeholder="Search tasks by title…"
-          className="max-w-xs"
+          placeholder={t("Search tasks by title…")}
+          className="!max-w-xs"
           data-testid="task-search"
         />
         <Select
           value={status}
           onChange={(event) => setStatus(event.target.value as TaskStatus | "")}
-          className="max-w-40"
+          className="!max-w-[170px]"
           data-testid="task-status-filter"
         >
-          <option value="">All statuses</option>
+          <option value="">{t("All statuses")}</option>
           {TASK_STATUSES.map((s) => (
             <option key={s} value={s}>
-              {s}
+              {t(s)}
             </option>
           ))}
         </Select>
-        <Select value={due} onChange={(event) => setDue(event.target.value as typeof due)} className="max-w-40">
-          <option value="">Any due date</option>
-          <option value="overdue">Overdue</option>
-          <option value="today">Due today</option>
-          <option value="upcoming">Upcoming</option>
+        <Select
+          value={due}
+          onChange={(event) => setDue(event.target.value as typeof due)}
+          className="!max-w-[170px]"
+        >
+          <option value="">{t("Any due date")}</option>
+          <option value="overdue">{t("Overdue")}</option>
+          <option value="today">{t("Due today")}</option>
+          <option value="upcoming">{t("Upcoming")}</option>
         </Select>
       </div>
 
       {isLoading ? (
-        <LoadingState label="Loading tasks…" />
+        <LoadingState label={t("Loading tasks…")} />
       ) : isError || !data ? (
         <ErrorState message={error instanceof Error ? error.message : undefined} onRetry={() => refetch()} />
       ) : data.items.length === 0 ? (
         <EmptyState
-          title="No tasks found"
-          hint="Create a task to keep track of your follow-ups."
-          action={<Button onClick={() => setFormOpen(true)}>New Task</Button>}
+          title={t("No tasks found")}
+          hint={t("Create a task to keep track of your follow-ups.")}
+          action={<Button onClick={() => setFormOpen(true)}>{t("New Task")}</Button>}
         />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <ul className="divide-y divide-slate-100">
+        <div className="cf-card overflow-hidden">
+          <ul className="divide-y divide-[#f0f2f8]">
             {data.items.map((task) => {
               const isOverdue =
                 task.status === "open" && task.due_at !== null && new Date(task.due_at) < startOfToday;
               return (
-                <li key={task.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                <li
+                  key={task.id}
+                  className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-[#fafbff]"
+                >
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span
-                        className={`text-sm font-medium ${
+                        className={`text-[13.5px] font-semibold ${
                           task.status === "completed" || task.status === "cancelled"
-                            ? "text-slate-400 line-through"
-                            : "text-slate-800"
+                            ? "text-[#a3abc0] line-through"
+                            : "text-[#303b54]"
                         }`}
                       >
                         {task.title}
@@ -181,52 +194,55 @@ export default function TasksPage() {
                       <Badge value={task.status} />
                       <Badge value={task.priority} />
                       {isOverdue && (
-                        <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-                          Overdue
+                        <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-600 ring-1 ring-inset ring-rose-200">
+                          <Icon name="alert" className="h-3 w-3" />
+                          {t("Overdue")}
                         </span>
                       )}
                     </div>
-                    <p className="mt-0.5 text-xs text-slate-400">
+                    <p className="mt-1.5 text-[11.5px] text-[#a3abc0]">
                       {task.related_lead ? (
-                        <Link to={`/leads/${task.related_lead.id}`} className="text-indigo-600 hover:text-indigo-700">
+                        <Link to={`/leads/${task.related_lead.id}`} className="cf-link !text-[11.5px]">
                           {task.related_lead.title}
                         </Link>
                       ) : task.related_contact ? (
                         task.related_contact.full_name
                       ) : (
-                        "No related records"
+                        t("No related records")
                       )}
                       {" · "}
-                      {task.due_at ? `Due ${formatDateTime(task.due_at)}` : "No due date"}
+                      {task.due_at
+                        ? t("Due {date}", { date: formatDateTime(task.due_at) })
+                        : t("No due date")}
                       {task.assignee ? ` · ${task.assignee.full_name}` : ""}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
                     <button
                       type="button"
-                      className="rounded px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
+                      className="cf-btn cf-btn-ghost !px-2 !py-1 !text-[12px] !text-indigo-600"
                       onClick={() => {
                         setEditing(task);
                         setFormOpen(true);
                       }}
                     >
-                      Edit
+                      {t("Edit")}
                     </button>
                     {task.status === "open" && (
                       <>
                         <button
                           type="button"
-                          className="rounded px-2 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50"
+                          className="cf-btn cf-btn-ghost !px-2 !py-1 !text-[12px] !text-emerald-600"
                           onClick={() => setStatusTarget({ task, status: "completed" })}
                         >
-                          Complete
+                          {t("Complete")}
                         </button>
                         <button
                           type="button"
-                          className="rounded px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100"
+                          className="cf-btn cf-btn-ghost !px-2 !py-1 !text-[12px]"
                           onClick={() => setStatusTarget({ task, status: "cancelled" })}
                         >
-                          Cancel task
+                          {t("Cancel task")}
                         </button>
                       </>
                     )}
@@ -241,7 +257,7 @@ export default function TasksPage() {
 
       <Modal
         open={formOpen}
-        title={editing ? "Edit task" : "New task"}
+        title={editing ? t("Edit task") : t("New task")}
         onClose={() => {
           setFormOpen(false);
           setEditing(null);
@@ -263,13 +279,15 @@ export default function TasksPage() {
 
       <ConfirmDialog
         open={statusTarget !== null}
-        title={statusTarget?.status === "completed" ? "Complete task" : "Cancel task"}
+        title={statusTarget?.status === "completed" ? t("Complete task") : t("Cancel task")}
         message={
           statusTarget?.status === "completed"
-            ? `Mark "${statusTarget?.task.title}" as completed?`
-            : `Cancel "${statusTarget?.task.title}"? Cancelled tasks stay in the history.`
+            ? t('Mark "{title}" as completed?', { title: statusTarget?.task.title ?? "" })
+            : t('Cancel "{title}"? Cancelled tasks stay in the history.', {
+                title: statusTarget?.task.title ?? "",
+              })
         }
-        confirmLabel={statusTarget?.status === "completed" ? "Complete" : "Cancel task"}
+        confirmLabel={statusTarget?.status === "completed" ? t("Complete") : t("Cancel task")}
         danger={statusTarget?.status === "cancelled"}
         busy={statusMutation.isPending}
         onConfirm={() =>

@@ -4,12 +4,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { listLeads, updateLeadStage } from "../api/leads";
 import { PipelineBoard } from "../components/PipelineBoard";
 import { ErrorState, LoadingState } from "../components/States";
+import { PageHeader } from "../components/ui";
 import { useToast } from "../components/Toast";
+import { useI18n } from "../i18n";
 import type { LeadStage } from "../types";
 
 export default function PipelinePage() {
   const queryClient = useQueryClient();
   const toast = useToast();
+  const { t } = useI18n();
   const [busyLeadId, setBusyLeadId] = useState<string | null>(null);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -22,7 +25,7 @@ export default function PipelinePage() {
       updateLeadStage(leadId, stage),
     onMutate: ({ leadId }) => setBusyLeadId(leadId),
     onSuccess: () => {
-      toast.push("success", "Lead stage updated");
+      toast.push("success", t("Lead stage updated"));
     },
     onError: (err: Error) => {
       toast.push("error", err.message);
@@ -37,21 +40,19 @@ export default function PipelinePage() {
   });
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Sales Pipeline</h1>
-          <p className="text-sm text-slate-500">
-            Drag a card to move it. Every move is validated and persisted by the API.
-          </p>
-        </div>
-        <Link to="/leads" className="text-sm font-medium text-indigo-600 hover:text-indigo-700">
-          View as list →
-        </Link>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title={t("Sales Pipeline")}
+        subtitle={t("Drag a card to move it. Every move is validated and persisted by the API.")}
+        actions={
+          <Link to="/leads" className="cf-link text-[12.5px]">
+            {t("View as list →")}
+          </Link>
+        }
+      />
 
       {isLoading ? (
-        <LoadingState label="Loading pipeline…" />
+        <LoadingState label={t("Loading pipeline…")} />
       ) : isError || !data ? (
         <ErrorState message={error instanceof Error ? error.message : undefined} onRetry={() => refetch()} />
       ) : (

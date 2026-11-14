@@ -1,8 +1,9 @@
 import { useForm } from "react-hook-form";
 import type { ActivityType } from "../../types";
 import { ACTIVITY_TYPES } from "../../types";
-import { Field, Input, Select, Textarea } from "../ui";
+import { Button, Field, Input, Select, Textarea } from "../ui";
 import type { ActivityPayload } from "../../api/activities";
+import { useI18n } from "../../i18n";
 
 interface ActivityFormValues {
   type: ActivityType;
@@ -17,7 +18,7 @@ export function ActivityForm({
   onSubmit,
   onCancel,
   busy,
-  submitLabel = "Log activity",
+  submitLabel,
 }: {
   leadId?: string;
   contactId?: string;
@@ -27,6 +28,7 @@ export function ActivityForm({
   busy?: boolean;
   submitLabel?: string;
 }) {
+  const { t } = useI18n();
   const { register, handleSubmit, formState } = useForm<ActivityFormValues>({
     defaultValues: { type: "note", subject: "", content: "" },
   });
@@ -47,39 +49,31 @@ export function ActivityForm({
       noValidate
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Type" required>
+        <Field label={t("Type")} required>
           <Select {...register("type")} data-testid="activity-type">
             {ACTIVITY_TYPES.map((type) => (
               <option key={type} value={type}>
-                {type}
+                {t(type)}
               </option>
             ))}
           </Select>
         </Field>
-        <Field label="Subject" required error={formState.errors.subject?.message}>
-          <Input {...register("subject", { required: "Subject is required" })} data-testid="activity-subject" />
+        <Field label={t("Subject")} required error={formState.errors.subject?.message}>
+          <Input {...register("subject", { required: t("Subject is required") })} data-testid="activity-subject" />
         </Field>
       </div>
-      <Field label="Notes">
-        <Textarea {...register("content")} rows={3} placeholder="What was discussed?" />
+      <Field label={t("Notes")}>
+        <Textarea {...register("content")} rows={3} placeholder={t("What was discussed?")} />
       </Field>
       <div className="flex justify-end gap-2">
         {onCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Cancel
-          </button>
+          <Button type="button" variant="secondary" onClick={onCancel}>
+            {t("Cancel")}
+          </Button>
         )}
-        <button
-          type="submit"
-          disabled={busy}
-          className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:bg-indigo-300"
-        >
-          {busy ? "Saving…" : submitLabel}
-        </button>
+        <Button type="submit" disabled={busy}>
+          {busy ? t("Saving…") : (submitLabel ?? t("Log activity"))}
+        </Button>
       </div>
     </form>
   );

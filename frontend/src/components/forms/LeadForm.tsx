@@ -1,8 +1,9 @@
 import { useForm } from "react-hook-form";
 import type { Company, Contact, ContactBrief, Lead, LeadPriority, LeadSource, LeadStage, User } from "../../types";
-import { LEAD_SOURCES, PRIORITIES } from "../../types";
-import { Field, Input, Select, Textarea } from "../ui";
+import { LEAD_SOURCES, PRIORITIES, STAGE_LABELS } from "../../types";
+import { Button, Field, Input, Select, Textarea } from "../ui";
 import type { LeadPayload } from "../../api/leads";
+import { useI18n } from "../../i18n";
 
 interface LeadFormValues {
   company_id: string;
@@ -26,7 +27,7 @@ export function LeadForm({
   onSubmit,
   onCancel,
   busy,
-  submitLabel = "Save",
+  submitLabel,
 }: {
   companies: Company[];
   contacts: ContactBrief[] | Contact[];
@@ -37,6 +38,7 @@ export function LeadForm({
   busy?: boolean;
   submitLabel?: string;
 }) {
+  const { t } = useI18n();
   const { register, handleSubmit, watch, formState } = useForm<LeadFormValues>({
     defaultValues: {
       company_id: initial?.company_id ?? "",
@@ -71,9 +73,9 @@ export function LeadForm({
       noValidate
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Company" required error={formState.errors.company_id?.message}>
-          <Select {...register("company_id", { required: "Company is required" })} data-testid="lead-company">
-            <option value="">Select a company…</option>
+        <Field label={t("Company")} required error={formState.errors.company_id?.message}>
+          <Select {...register("company_id", { required: t("Company is required") })} data-testid="lead-company">
+            <option value="">{t("Select a company…")}</option>
             {companies.map((company) => (
               <option key={company.id} value={company.id}>
                 {company.name}
@@ -81,9 +83,9 @@ export function LeadForm({
             ))}
           </Select>
         </Field>
-        <Field label="Contact" required error={formState.errors.contact_id?.message}>
-          <Select {...register("contact_id", { required: "Contact is required" })} data-testid="lead-contact">
-            <option value="">Select a contact…</option>
+        <Field label={t("Contact")} required error={formState.errors.contact_id?.message}>
+          <Select {...register("contact_id", { required: t("Contact is required") })} data-testid="lead-contact">
+            <option value="">{t("Select a contact…")}</option>
             {companyContacts.map((contact) => (
               <option key={contact.id} value={contact.id}>
                 {contact.full_name || `${contact.first_name} ${contact.last_name}`}
@@ -92,63 +94,64 @@ export function LeadForm({
           </Select>
         </Field>
       </div>
-      <Field label="Title" required error={formState.errors.title?.message}>
-        <Input {...register("title", { required: "Title is required", maxLength: 200 })} data-testid="lead-title" />
+      <Field label={t("Title")} required error={formState.errors.title?.message}>
+        <Input {...register("title", { required: t("Title is required"), maxLength: 200 })} data-testid="lead-title" />
       </Field>
       <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Value" error={formState.errors.value?.message}>
+        <Field label={t("Value")} error={formState.errors.value?.message}>
           <Input
             {...register("value", {
-              validate: (v) => v === "" || Number(v) >= 0 || "Value must be a positive number",
+              validate: (v) => v === "" || Number(v) >= 0 || t("Value must be a positive number"),
             })}
             type="number"
             min="0"
             step="0.01"
           />
         </Field>
-        <Field label="Currency">
+        <Field label={t("Currency")}>
           <Select {...register("currency")}>
             <option value="USD">USD</option>
             <option value="EUR">EUR</option>
             <option value="GBP">GBP</option>
           </Select>
         </Field>
-        <Field label="Source">
+        <Field label={t("Source")}>
           <Select {...register("source")}>
             {LEAD_SOURCES.map((source) => (
               <option key={source} value={source}>
-                {source.replace(/_/g, " ")}
+                {t(source)}
               </option>
             ))}
           </Select>
         </Field>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Stage">
+        <Field label={t("Stage")}>
           <Select {...register("stage")}>
-            <option value="new">New</option>
-            <option value="qualified">Qualified</option>
-            <option value="proposal">Proposal</option>
-            <option value="negotiation">Negotiation</option>
-          </Select>
-        </Field>
-        <Field label="Priority">
-          <Select {...register("priority")}>
-            {PRIORITIES.map((priority) => (
-              <option key={priority} value={priority}>
-                {priority}
+            {(["new", "qualified", "proposal", "negotiation"] as LeadStage[]).map((stage) => (
+              <option key={stage} value={stage}>
+                {t(STAGE_LABELS[stage])}
               </option>
             ))}
           </Select>
         </Field>
-        <Field label="Expected close">
+        <Field label={t("Priority")}>
+          <Select {...register("priority")}>
+            {PRIORITIES.map((priority) => (
+              <option key={priority} value={priority}>
+                {t(priority)}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label={t("Expected close")}>
           <Input {...register("expected_close_date")} type="date" />
         </Field>
       </div>
       {users && users.length > 0 && (
-        <Field label="Owner">
+        <Field label={t("Owner")}>
           <Select {...register("owner_id")}>
-            <option value="">Me (current user)</option>
+            <option value="">{t("Me (current user)")}</option>
             {users.map((user) => (
               <option key={user.id} value={user.id}>
                 {user.full_name}
@@ -157,24 +160,16 @@ export function LeadForm({
           </Select>
         </Field>
       )}
-      <Field label="Description">
+      <Field label={t("Description")}>
         <Textarea {...register("description")} rows={3} />
       </Field>
-      <div className="flex justify-end gap-2 pt-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={busy}
-          className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:bg-indigo-300"
-        >
-          {busy ? "Saving…" : submitLabel}
-        </button>
+      <div className="flex justify-end gap-2 border-t cf-divider pt-4">
+        <Button type="button" variant="secondary" onClick={onCancel}>
+          {t("Cancel")}
+        </Button>
+        <Button type="submit" disabled={busy}>
+          {busy ? t("Saving…") : (submitLabel ?? t("Save"))}
+        </Button>
       </div>
     </form>
   );

@@ -7,19 +7,21 @@ import { listLeads } from "../api/leads";
 import { listContacts } from "../api/contacts";
 import { ACTIVITY_TYPES } from "../types";
 import type { Activity, ActivityType } from "../types";
-import { Badge, Button, Field, Select } from "../components/ui";
+import { Badge, Button, Field, Icon, PageHeader, Select } from "../components/ui";
 import { Modal } from "../components/Modal";
 import { Pagination } from "../components/Pagination";
 import { EmptyState, ErrorState, LoadingState } from "../components/States";
 import { ActivityForm } from "../components/forms/ActivityForm";
 import { useToast } from "../components/Toast";
 import { formatDateTime } from "../lib/format";
+import { useI18n } from "../i18n";
 
 const PAGE_SIZE = 15;
 
 export default function ActivitiesPage() {
   const queryClient = useQueryClient();
   const toast = useToast();
+  const { t } = useI18n();
 
   const [type, setType] = useState<ActivityType | "">("");
   const [page, setPage] = useState(1);
@@ -42,7 +44,7 @@ export default function ActivitiesPage() {
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       setFormOpen(false);
       setEditing(null);
-      toast.push("success", editing ? "Activity updated" : "Activity logged");
+      toast.push("success", editing ? t("Activity updated") : t("Activity logged"));
     },
     onError: (err: Error) => toast.push("error", err.message),
   });
@@ -52,63 +54,70 @@ export default function ActivitiesPage() {
   }, [type]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Activities</h1>
-          <p className="text-sm text-slate-500">Every call, email, meeting and note across your CRM.</p>
-        </div>
-        <Button
-          onClick={() => {
-            setEditing(null);
-            setFormOpen(true);
-          }}
-          data-testid="activity-create"
-        >
-          Log Activity
-        </Button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title={t("Activities")}
+        subtitle={t("Every call, email, meeting and note across your CRM.")}
+        actions={
+          <Button
+            onClick={() => {
+              setEditing(null);
+              setFormOpen(true);
+            }}
+            data-testid="activity-create"
+          >
+            <Icon name="plus" className="h-4 w-4" />
+            {t("Log Activity")}
+          </Button>
+        }
+      />
 
       <div className="flex flex-wrap items-center gap-3">
+        <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#e5e9f2] bg-white text-[#8a94ac]">
+          <Icon name="filter" className="h-4 w-4" />
+        </span>
         <Select
           value={type}
           onChange={(event) => setType(event.target.value as ActivityType | "")}
-          className="max-w-40"
+          className="!max-w-[170px]"
           data-testid="activity-type-filter"
         >
-          <option value="">All types</option>
-          {ACTIVITY_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {t}
+          <option value="">{t("All types")}</option>
+          {ACTIVITY_TYPES.map((item) => (
+            <option key={item} value={item}>
+              {t(item)}
             </option>
           ))}
         </Select>
       </div>
 
       {isLoading ? (
-        <LoadingState label="Loading activities…" />
+        <LoadingState label={t("Loading activities…")} />
       ) : isError || !data ? (
         <ErrorState message={error instanceof Error ? error.message : undefined} onRetry={() => refetch()} />
       ) : data.items.length === 0 ? (
         <EmptyState
-          title="No activities yet"
-          hint="Log a call, email, meeting or note to start building history."
-          action={<Button onClick={() => setFormOpen(true)}>Log Activity</Button>}
+          title={t("No activities yet")}
+          hint={t("Log a call, email, meeting or note to start building history.")}
+          action={<Button onClick={() => setFormOpen(true)}>{t("Log Activity")}</Button>}
         />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <ul className="divide-y divide-slate-100">
+        <div className="cf-card overflow-hidden">
+          <ul className="divide-y divide-[#f0f2f8]">
             {data.items.map((activity) => (
-              <li key={activity.id} className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
+              <li
+                key={activity.id}
+                className="flex flex-wrap items-start justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-[#fafbff]"
+              >
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5">
                     <Badge value={activity.type} />
-                    <span className="text-sm font-medium text-slate-800">{activity.subject}</span>
+                    <span className="text-[13.5px] font-semibold text-[#303b54]">{activity.subject}</span>
                   </div>
-                  {activity.content && <p className="mt-0.5 truncate text-sm text-slate-500">{activity.content}</p>}
-                  <p className="mt-0.5 text-xs text-slate-400">
+                  {activity.content && <p className="mt-1 truncate text-[12.5px] text-[#8a94ac]">{activity.content}</p>}
+                  <p className="mt-1.5 text-[11.5px] text-[#a3abc0]">
                     {activity.lead ? (
-                      <Link to={`/leads/${activity.lead.id}`} className="text-indigo-600 hover:text-indigo-700">
+                      <Link to={`/leads/${activity.lead.id}`} className="cf-link !text-[11.5px]">
                         {activity.lead.title}
                       </Link>
                     ) : activity.company ? (
@@ -122,13 +131,13 @@ export default function ActivitiesPage() {
                 </div>
                 <button
                   type="button"
-                  className="rounded px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
+                  className="cf-btn cf-btn-ghost !px-2 !py-1 !text-[12px] !text-indigo-600"
                   onClick={() => {
                     setEditing(activity);
                     setFormOpen(true);
                   }}
                 >
-                  Edit
+                  {t("Edit")}
                 </button>
               </li>
             ))}
@@ -139,7 +148,7 @@ export default function ActivitiesPage() {
 
       <Modal
         open={formOpen}
-        title={editing ? "Edit activity" : "Log activity"}
+        title={editing ? t("Edit activity") : t("Log activity")}
         onClose={() => {
           setFormOpen(false);
           setEditing(null);
@@ -171,6 +180,7 @@ function LinkedActivityForm({
   onCancel: () => void;
   onSubmit: (payload: ActivityPayload) => void;
 }) {
+  const { t } = useI18n();
   const [leadId, setLeadId] = useState(editing?.lead_id ?? "");
   const [contactId, setContactId] = useState(editing?.contact_id ?? "");
   const { data: leadsData } = useQuery({
@@ -186,34 +196,29 @@ function LinkedActivityForm({
     <div className="space-y-4">
       {!editing && (
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Related lead">
-            <select
+          <Field label={t("Related lead")}>
+            <Select
               value={leadId}
               onChange={(event) => setLeadId(event.target.value)}
-              className="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
               data-testid="activity-lead-select"
             >
-              <option value="">None</option>
+              <option value="">{t("None")}</option>
               {(leadsData?.items ?? []).map((lead) => (
                 <option key={lead.id} value={lead.id}>
                   {lead.title}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
-          <Field label="Related contact">
-            <select
-              value={contactId}
-              onChange={(event) => setContactId(event.target.value)}
-              className="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-            >
-              <option value="">None</option>
+          <Field label={t("Related contact")}>
+            <Select value={contactId} onChange={(event) => setContactId(event.target.value)}>
+              <option value="">{t("None")}</option>
               {(contactsData?.items ?? []).map((contact) => (
                 <option key={contact.id} value={contact.id}>
                   {contact.full_name}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
         </div>
       )}

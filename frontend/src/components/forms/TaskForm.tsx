@@ -1,8 +1,9 @@
 import { useForm } from "react-hook-form";
 import type { ContactBrief, Lead, LeadBrief, LeadPriority, Task } from "../../types";
 import { PRIORITIES } from "../../types";
-import { Field, Input, Select, Textarea } from "../ui";
+import { Button, Field, Input, Select, Textarea } from "../ui";
 import type { TaskPayload } from "../../api/tasks";
+import { useI18n } from "../../i18n";
 
 interface TaskFormValues {
   title: string;
@@ -30,7 +31,7 @@ export function TaskForm({
   onSubmit,
   onCancel,
   busy,
-  submitLabel = "Save",
+  submitLabel,
 }: {
   leads?: LeadBrief[] | Lead[];
   contacts?: ContactBrief[];
@@ -42,6 +43,7 @@ export function TaskForm({
   busy?: boolean;
   submitLabel?: string;
 }) {
+  const { t } = useI18n();
   const { register, handleSubmit, formState } = useForm<TaskFormValues>({
     defaultValues: {
       title: initial?.title ?? "",
@@ -68,13 +70,13 @@ export function TaskForm({
       className="space-y-4"
       noValidate
     >
-      <Field label="Title" required error={formState.errors.title?.message}>
-        <Input {...register("title", { required: "Title is required" })} data-testid="task-title" />
+      <Field label={t("Title")} required error={formState.errors.title?.message}>
+        <Input {...register("title", { required: t("Title is required") })} data-testid="task-title" />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Related lead">
+        <Field label={t("Related lead")}>
           <Select {...register("related_lead_id")}>
-            <option value="">None</option>
+            <option value="">{t("None")}</option>
             {(leads ?? []).map((lead) => (
               <option key={lead.id} value={lead.id}>
                 {lead.title}
@@ -82,9 +84,9 @@ export function TaskForm({
             ))}
           </Select>
         </Field>
-        <Field label="Related contact">
+        <Field label={t("Related contact")}>
           <Select {...register("related_contact_id")}>
-            <option value="">None</option>
+            <option value="">{t("None")}</option>
             {(contacts ?? []).map((contact) => (
               <option key={contact.id} value={contact.id}>
                 {contact.full_name || `${contact.first_name} ${contact.last_name}`}
@@ -94,37 +96,29 @@ export function TaskForm({
         </Field>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Due at">
+        <Field label={t("Due at")}>
           <Input {...register("due_at")} type="datetime-local" />
         </Field>
-        <Field label="Priority">
+        <Field label={t("Priority")}>
           <Select {...register("priority")}>
             {PRIORITIES.map((priority) => (
               <option key={priority} value={priority}>
-                {priority}
+                {t(priority)}
               </option>
             ))}
           </Select>
         </Field>
       </div>
-      <Field label="Description">
+      <Field label={t("Description")}>
         <Textarea {...register("description")} rows={3} />
       </Field>
-      <div className="flex justify-end gap-2 pt-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={busy}
-          className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:bg-indigo-300"
-        >
-          {busy ? "Saving…" : submitLabel}
-        </button>
+      <div className="flex justify-end gap-2 border-t cf-divider pt-4">
+        <Button type="button" variant="secondary" onClick={onCancel}>
+          {t("Cancel")}
+        </Button>
+        <Button type="submit" disabled={busy}>
+          {busy ? t("Saving…") : (submitLabel ?? t("Save"))}
+        </Button>
       </div>
     </form>
   );

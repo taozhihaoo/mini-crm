@@ -1,8 +1,9 @@
 import { useForm } from "react-hook-form";
 import type { Company, Contact } from "../../types";
-import { Field, Input, Select, Textarea } from "../ui";
+import { Button, Field, Input, Select, Textarea } from "../ui";
 import type { ContactPayload } from "../../api/contacts";
 import { emptyToNull } from "../../lib/emptyToNull";
+import { useI18n } from "../../i18n";
 
 export function ContactForm({
   companies,
@@ -11,7 +12,7 @@ export function ContactForm({
   onSubmit,
   onCancel,
   busy,
-  submitLabel = "Save",
+  submitLabel,
 }: {
   companies: Company[];
   initial?: Contact;
@@ -21,6 +22,7 @@ export function ContactForm({
   busy?: boolean;
   submitLabel?: string;
 }) {
+  const { t } = useI18n();
   const { register, handleSubmit, formState } = useForm<ContactPayload>({
     defaultValues: {
       company_id: initial?.company_id ?? defaultCompanyId ?? "",
@@ -39,9 +41,9 @@ export function ContactForm({
       className="space-y-4"
       noValidate
     >
-      <Field label="Company" required error={formState.errors.company_id?.message}>
-        <Select {...register("company_id", { required: "Company is required" })} data-testid="contact-company">
-          <option value="">Select a company…</option>
+      <Field label={t("Company")} required error={formState.errors.company_id?.message}>
+        <Select {...register("company_id", { required: t("Company is required") })} data-testid="contact-company">
+          <option value="">{t("Select a company…")}</option>
           {companies.map((company) => (
             <option key={company.id} value={company.id}>
               {company.name}
@@ -50,48 +52,40 @@ export function ContactForm({
         </Select>
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="First name" required error={formState.errors.first_name?.message}>
-          <Input {...register("first_name", { required: "First name is required" })} />
+        <Field label={t("First name")} required error={formState.errors.first_name?.message}>
+          <Input {...register("first_name", { required: t("First name is required") })} />
         </Field>
-        <Field label="Last name" required error={formState.errors.last_name?.message}>
-          <Input {...register("last_name", { required: "Last name is required" })} />
+        <Field label={t("Last name")} required error={formState.errors.last_name?.message}>
+          <Input {...register("last_name", { required: t("Last name is required") })} />
         </Field>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Email" required error={formState.errors.email?.message}>
+        <Field label={t("Email")} required error={formState.errors.email?.message}>
           <Input
             {...register("email", {
-              required: "Email is required",
-              pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "Enter a valid email" },
+              required: t("Email is required"),
+              pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: t("Enter a valid email") },
             })}
             type="email"
           />
         </Field>
-        <Field label="Phone">
+        <Field label={t("Phone")}>
           <Input {...register("phone")} />
         </Field>
       </div>
-      <Field label="Job title">
+      <Field label={t("Job title")}>
         <Input {...register("job_title")} />
       </Field>
-      <Field label="Notes">
+      <Field label={t("Notes")}>
         <Textarea {...register("notes")} rows={3} />
       </Field>
-      <div className="flex justify-end gap-2 pt-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={busy}
-          className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:bg-indigo-300"
-        >
-          {busy ? "Saving…" : submitLabel}
-        </button>
+      <div className="flex justify-end gap-2 border-t cf-divider pt-4">
+        <Button type="button" variant="secondary" onClick={onCancel}>
+          {t("Cancel")}
+        </Button>
+        <Button type="submit" disabled={busy}>
+          {busy ? t("Saving…") : (submitLabel ?? t("Save"))}
+        </Button>
       </div>
     </form>
   );

@@ -22,5 +22,8 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     css: false,
+    // The suite is small; running files serially keeps the worker pool from
+    // dying in sandboxed/CI environments with restricted temp-dir writes.
+    fileParallelism: false,
   },
 } as UserConfig);

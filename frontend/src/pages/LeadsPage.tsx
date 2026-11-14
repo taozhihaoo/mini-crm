@@ -8,7 +8,7 @@ import { listContacts } from "../api/contacts";
 import { downloadFile } from "../api/client";
 import { LEAD_STAGES, PRIORITIES, STAGE_LABELS } from "../types";
 import type { Company, Contact, Lead, LeadPriority, LeadStage } from "../types";
-import { Badge, Button, Input, Select } from "../components/ui";
+import { Badge, Button, Icon, Input, PageHeader, Select } from "../components/ui";
 import { ConfirmDialog, Modal } from "../components/Modal";
 import { Pagination } from "../components/Pagination";
 import { EmptyState, ErrorState, LoadingState } from "../components/States";
@@ -16,12 +16,14 @@ import { LeadForm } from "../components/forms/LeadForm";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useToast } from "../components/Toast";
 import { formatDate, formatMoney } from "../lib/format";
+import { useI18n } from "../i18n";
 
 const PAGE_SIZE = 10;
 
 export default function LeadsPage() {
   const queryClient = useQueryClient();
   const toast = useToast();
+  const { t } = useI18n();
 
   const [searchInput, setSearchInput] = useState("");
   const search = useDebouncedValue(searchInput);
@@ -71,7 +73,7 @@ export default function LeadsPage() {
       invalidate();
       setFormOpen(false);
       setEditing(null);
-      toast.push("success", editing ? "Lead updated" : "Lead created");
+      toast.push("success", editing ? t("Lead updated") : t("Lead created"));
     },
     onError: (err: Error) => toast.push("error", err.message),
   });
@@ -81,7 +83,7 @@ export default function LeadsPage() {
     onSuccess: (_data, lead) => {
       invalidate();
       setArchiveTarget(null);
-      toast.push("success", lead.archived ? "Lead restored" : "Lead archived");
+      toast.push("success", lead.archived ? t("Lead restored") : t("Lead archived"));
     },
     onError: (err: Error) => toast.push("error", err.message),
   });
@@ -95,135 +97,137 @@ export default function LeadsPage() {
       const date = new Date().toISOString().slice(0, 10);
       await downloadFile("/export/leads", `leads_${date}.csv`);
     } catch (err) {
-      toast.push("error", err instanceof Error ? err.message : "Export failed");
+      toast.push("error", err instanceof Error ? err.message : t("Export failed"));
     }
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Leads</h1>
-          <p className="text-sm text-slate-500">Opportunities moving through your pipeline.</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={handleExport}>
-            Export CSV
-          </Button>
-          <Button
-            onClick={() => {
-              setEditing(null);
-              setFormOpen(true);
-            }}
-            data-testid="lead-create"
-          >
-            New Lead
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title={t("Leads")}
+        subtitle={t("Opportunities moving through your pipeline.")}
+        actions={
+          <>
+            <Button variant="secondary" onClick={handleExport}>
+              <Icon name="download" className="h-4 w-4" />
+              {t("Export CSV")}
+            </Button>
+            <Button
+              onClick={() => {
+                setEditing(null);
+                setFormOpen(true);
+              }}
+              data-testid="lead-create"
+            >
+              <Icon name="plus" className="h-4 w-4" />
+              {t("New Lead")}
+            </Button>
+          </>
+        }
+      />
 
       <div className="flex flex-wrap items-center gap-3">
         <Input
           value={searchInput}
           onChange={(event) => setSearchInput(event.target.value)}
-          placeholder="Search by title or description…"
-          className="max-w-xs"
+          placeholder={t("Search by title or description…")}
+          className="!max-w-xs"
           data-testid="lead-search"
         />
-        <Select value={stage} onChange={(event) => setStage(event.target.value as LeadStage | "")} className="max-w-40">
-          <option value="">All stages</option>
+        <Select
+          value={stage}
+          onChange={(event) => setStage(event.target.value as LeadStage | "")}
+          className="!max-w-[170px]"
+        >
+          <option value="">{t("All stages")}</option>
           {LEAD_STAGES.map((s) => (
             <option key={s} value={s}>
-              {STAGE_LABELS[s]}
+              {t(STAGE_LABELS[s])}
             </option>
           ))}
         </Select>
         <Select
           value={priority}
           onChange={(event) => setPriority(event.target.value as LeadPriority | "")}
-          className="max-w-36"
+          className="!max-w-[160px]"
         >
-          <option value="">All priorities</option>
+          <option value="">{t("All priorities")}</option>
           {PRIORITIES.map((p) => (
             <option key={p} value={p}>
-              {p}
+              {t(p)}
             </option>
           ))}
         </Select>
       </div>
 
       {isLoading ? (
-        <LoadingState label="Loading leads…" />
+        <LoadingState label={t("Loading leads…")} />
       ) : isError || !data ? (
         <ErrorState message={error instanceof Error ? error.message : undefined} onRetry={() => refetch()} />
       ) : data.items.length === 0 ? (
         <EmptyState
-          title="No leads found"
-          hint="Create your first lead or adjust the filters."
-          action={<Button onClick={() => setFormOpen(true)}>New Lead</Button>}
+          title={t("No leads found")}
+          hint={t("Create your first lead or adjust the filters.")}
+          action={<Button onClick={() => setFormOpen(true)}>{t("New Lead")}</Button>}
         />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="cf-card overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <table className="cf-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Title</th>
-                  <th className="px-4 py-3">Company</th>
-                  <th className="px-4 py-3">Value</th>
-                  <th className="px-4 py-3">Stage</th>
-                  <th className="px-4 py-3">Priority</th>
-                  <th className="hidden px-4 py-3 md:table-cell">Close date</th>
-                  <th className="hidden px-4 py-3 lg:table-cell">Owner</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th>{t("Title")}</th>
+                  <th>{t("Company")}</th>
+                  <th>{t("Value")}</th>
+                  <th>{t("Stage")}</th>
+                  <th>{t("Priority")}</th>
+                  <th className="hidden md:table-cell">{t("Close date")}</th>
+                  <th className="hidden lg:table-cell">{t("Owner")}</th>
+                  <th className="!text-right">{t("Actions")}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody>
                 {data.items.map((lead) => (
                   <tr key={lead.id} className={lead.archived ? "opacity-60" : undefined}>
-                    <td className="px-4 py-3 font-medium text-slate-800">
-                      <Link to={`/leads/${lead.id}`} className="text-indigo-600 hover:text-indigo-700">
+                    <td>
+                      <Link to={`/leads/${lead.id}`} className="cf-link !text-[13px]">
                         {lead.title}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{lead.company?.name ?? "-"}</td>
-                    <td className="px-4 py-3 font-medium text-slate-700">
-                      {formatMoney(lead.value, lead.currency)}
-                    </td>
-                    <td className="px-4 py-3">
+                    <td>{lead.company?.name ?? "-"}</td>
+                    <td className="!font-semibold !text-[#27314a]">{formatMoney(lead.value, lead.currency)}</td>
+                    <td>
                       <Badge value={lead.stage} />
                     </td>
-                    <td className="px-4 py-3">
+                    <td>
                       <Badge value={lead.priority} />
                     </td>
-                    <td className="hidden px-4 py-3 text-slate-600 md:table-cell">
-                      {formatDate(lead.expected_close_date)}
-                    </td>
-                    <td className="hidden px-4 py-3 text-slate-600 lg:table-cell">{lead.owner?.full_name ?? "-"}</td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="hidden md:table-cell">{formatDate(lead.expected_close_date)}</td>
+                    <td className="hidden lg:table-cell">{lead.owner?.full_name ?? "-"}</td>
+                    <td className="!text-right">
                       <div className="flex justify-end gap-1">
                         <Link
                           to={`/leads/${lead.id}`}
-                          className="rounded px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                          className="cf-btn cf-btn-ghost !px-2 !py-1 !text-[12px]"
                         >
-                          Open
+                          {t("Open")}
                         </Link>
                         <button
                           type="button"
-                          className="rounded px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
+                          className="cf-btn cf-btn-ghost !px-2 !py-1 !text-[12px] !text-indigo-600"
                           onClick={() => {
                             setEditing(lead);
                             setFormOpen(true);
                           }}
                         >
-                          Edit
+                          {t("Edit")}
                         </button>
                         <button
                           type="button"
-                          className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                          className="cf-btn cf-btn-ghost !px-2 !py-1 !text-[12px] !text-rose-600"
                           onClick={() => setArchiveTarget(lead)}
                         >
-                          Archive
+                          {t("Archive")}
                         </button>
                       </div>
                     </td>
@@ -238,7 +242,7 @@ export default function LeadsPage() {
 
       <Modal
         open={formOpen}
-        title={editing ? "Edit lead" : "New lead"}
+        title={editing ? t("Edit lead") : t("New lead")}
         onClose={() => {
           setFormOpen(false);
           setEditing(null);
@@ -260,9 +264,11 @@ export default function LeadsPage() {
 
       <ConfirmDialog
         open={archiveTarget !== null}
-        title="Archive lead"
-        message={`Archive "${archiveTarget?.title}"? It will be hidden from lists and cannot be moved between stages while archived.`}
-        confirmLabel="Archive"
+        title={t("Archive lead")}
+        message={t('Archive "{title}"? It will be hidden from lists and cannot be moved between stages while archived.', {
+          title: archiveTarget?.title ?? "",
+        })}
+        confirmLabel={t("Archive")}
         danger
         busy={archiveMutation.isPending}
         onConfirm={() => archiveTarget && archiveMutation.mutate(archiveTarget)}

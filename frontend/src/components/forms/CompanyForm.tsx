@@ -1,15 +1,16 @@
 import { useForm } from "react-hook-form";
 import type { Company } from "../../types";
-import { Field, Input, Textarea } from "../ui";
+import { Button, Field, Input, Textarea } from "../ui";
 import type { CompanyPayload } from "../../api/companies";
 import { emptyToNull } from "../../lib/emptyToNull";
+import { useI18n } from "../../i18n";
 
 export function CompanyForm({
   initial,
   onSubmit,
   onCancel,
   busy,
-  submitLabel = "Save",
+  submitLabel,
 }: {
   initial?: Company;
   onSubmit: (payload: CompanyPayload) => void;
@@ -17,6 +18,7 @@ export function CompanyForm({
   busy?: boolean;
   submitLabel?: string;
 }) {
+  const { t } = useI18n();
   const { register, handleSubmit, formState } = useForm<CompanyPayload>({
     defaultValues: {
       name: initial?.name ?? "",
@@ -35,47 +37,39 @@ export function CompanyForm({
       className="space-y-4"
       noValidate
     >
-      <Field label="Name" required error={formState.errors.name?.message}>
+      <Field label={t("Name")} required error={formState.errors.name?.message}>
         <Input
-          {...register("name", { required: "Name is required", maxLength: 255 })}
+          {...register("name", { required: t("Name is required"), maxLength: 255 })}
           data-testid="company-name"
         />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Website">
-          <Input {...register("website")} placeholder="https://" />
+        <Field label={t("Website")}>
+          <Input {...register("website")} placeholder={t("https://")} />
         </Field>
-        <Field label="Industry">
+        <Field label={t("Industry")}>
           <Input {...register("industry")} />
         </Field>
-        <Field label="Phone">
+        <Field label={t("Phone")}>
           <Input {...register("phone")} />
         </Field>
-        <Field label="Email" error={formState.errors.email?.message}>
+        <Field label={t("Email")} error={formState.errors.email?.message}>
           <Input {...register("email")} type="email" />
         </Field>
       </div>
-      <Field label="Address">
+      <Field label={t("Address")}>
         <Input {...register("address")} />
       </Field>
-      <Field label="Notes">
+      <Field label={t("Notes")}>
         <Textarea {...register("notes")} rows={3} />
       </Field>
-      <div className="flex justify-end gap-2 pt-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={busy}
-          className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:bg-indigo-300"
-        >
-          {busy ? "Saving…" : submitLabel}
-        </button>
+      <div className="flex justify-end gap-2 border-t cf-divider pt-4">
+        <Button type="button" variant="secondary" onClick={onCancel}>
+          {t("Cancel")}
+        </Button>
+        <Button type="submit" disabled={busy}>
+          {busy ? t("Saving…") : (submitLabel ?? t("Save"))}
+        </Button>
       </div>
     </form>
   );
