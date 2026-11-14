@@ -1,7 +1,8 @@
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models import User
+from app.repositories.base import contains
 from app.schemas.params import UserListParams
 
 
@@ -16,7 +17,15 @@ def get_by_email(db: Session, email: str) -> User | None:
 
 def list_users(db: Session, params: UserListParams) -> tuple[list[User], int]:
     stmt = select(User)
-    total = db.scalar(select(func.count()).select_from(User)) or 0
+    if params.search:
+        term = contains(params.search)
+        stmt = stmt.where(
+            or_(
+                User.email.ilike(term, escape="\\"),
+                User.full_name.ilike(term, escape="\\"),
+            )
+        )
+    total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
 
     sort_col = getattr(User, params.sort_by)
     stmt = stmt.order_by(sort_col.desc() if params.order == "desc" else sort_col.asc())

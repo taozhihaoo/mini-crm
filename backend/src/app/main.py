@@ -2,6 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
@@ -18,17 +19,35 @@ def _register_exception_handlers(app: FastAPI) -> None:
     async def handle_app_error(_: Request, exc: AppError) -> JSONResponse:
         return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
+    def _validation_payload(exc: ValidationError | RequestValidationError) -> dict:
+        """Both pydantic and FastAPI validation errors share one response shape.
+
+        `detail` is a human-readable string (what the SPA shows); `errors` keeps
+        the per-field details for API consumers. Without this, bad sort fields
+        produced `{detail: "Validation error", errors: [...]}` while bad query
+        params produced `{detail: [...]}` - two incompatible shapes for one 422.
+        """
+        errors = [
+            {
+                "msg": err.get("msg", "invalid"),
+                "loc": [str(part) for part in err.get("loc", [])],
+            }
+            for err in exc.errors()
+        ]
+        first = errors[0]["msg"] if errors else "invalid request"
+        return {"detail": f"Validation error: {first}", "errors": errors}
+
     @app.exception_handler(ValidationError)
     async def handle_validation_error(_: Request, exc: ValidationError) -> JSONResponse:
         # Covers validation raised inside dependency models (e.g. bad sort fields),
         # which FastAPI does not always convert to a 422 response.
-        return JSONResponse(
-            status_code=422,
-            content={
-                "detail": "Validation error",
-                "errors": [{"msg": err.get("msg", "invalid")} for err in exc.errors()],
-            },
-        )
+        return JSONResponse(status_code=422, content=_validation_payload(exc))
+
+    @app.exception_handler(RequestValidationError)
+    async def handle_request_validation_error(
+        _: Request, exc: RequestValidationError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=422, content=_validation_payload(exc))
 
     @app.exception_handler(Exception)
     async def handle_unexpected_error(_: Request, exc: Exception) -> JSONResponse:

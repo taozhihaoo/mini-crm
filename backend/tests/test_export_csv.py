@@ -13,7 +13,7 @@ def test_export_leads(client, admin_headers, company_factory, contact_factory, l
     assert "attachment" in response.headers["content-disposition"]
     assert "leads_" in response.headers["content-disposition"]
 
-    lines = response.text.strip().splitlines()
+    lines = response.text.strip().lstrip("\ufeff").splitlines()
     assert lines[0].startswith("id,title,company,contact,stage")
     assert "Exported deal" in lines[1]
     assert "Export Co" in lines[1]
@@ -67,3 +67,29 @@ def test_export_unknown_entity(client, admin_headers):
 
 def test_export_requires_auth(client):
     assert client.get("/api/export/leads").status_code == 401
+
+
+def test_export_sanitizes_formula_after_leading_whitespace(client, admin_headers):
+    """Spreadsheet apps trim leading whitespace before evaluating a cell."""
+    client.post(
+        "/api/companies",
+        json={"name": "  =HYPERLINK(\"http://evil.example\",\"click\")"},
+        headers=admin_headers,
+    )
+    response = client.get("/api/export/companies", headers=admin_headers)
+    rows = list(csv.reader(io.StringIO(response.text.lstrip("\ufeff"))))[1:]
+    assert any(row[1].startswith("'") for row in rows)
+
+
+def test_export_keeps_numeric_columns_numeric(client, admin_headers, company_factory, contact_factory, lead_factory):
+    """A negative/decimal value must not gain a leading apostrophe."""
+    company = company_factory(name="Numeric Co")
+    contact = contact_factory(company=company)
+    lead_factory(title="Refund adjustment", company=company, contact=contact, value="-125.50")
+
+    response = client.get("/api/export/leads", headers=admin_headers)
+    rows = list(csv.reader(io.StringIO(response.text.lstrip("\ufeff"))))
+    header = rows[0]
+    value_index = header.index("value")
+    numeric_row = next(row for row in rows[1:] if row[header.index("title")] == "Refund adjustment")
+    assert numeric_row[value_index] == "-125.50"

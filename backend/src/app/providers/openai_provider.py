@@ -51,6 +51,9 @@ class OpenAIProvider(LLMProvider):
             transport=transport,
         )
 
+    def close(self) -> None:
+        self._client.close()
+
     def summarize_lead(self, context: LeadContext) -> LeadSummaryResult:
         data, usage = self._complete_json("summary", context)
         result = self._validate(LeadSummaryResult, data)

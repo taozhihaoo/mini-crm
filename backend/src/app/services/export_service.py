@@ -10,12 +10,21 @@ from sqlalchemy.orm import Session
 from app.models import Company, Contact, Lead, Task
 
 # Cells starting with these characters could be interpreted as formulas by Excel/LibreOffice.
-_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+_FORMULA_PREFIXES = ("=", "+", "-", "@")
+_CONTROL_PREFIXES = ("\t", "\r", "\n")
 
 
 def sanitize_cell(value) -> str:
+    """Neutralize spreadsheet formulas without corrupting genuine numbers.
+
+    Numeric columns (lead value, counts) must stay numeric - a leading "-" there
+    is a sign, not a formula. Spreadsheet apps also strip leading whitespace
+    before parsing, so "  =1+1" is as dangerous as "=1+1".
+    """
+    if isinstance(value, (int, float, Decimal)) and not isinstance(value, bool):
+        return str(value)
     text = "" if value is None else str(value)
-    if text.startswith(_FORMULA_PREFIXES):
+    if text.startswith(_CONTROL_PREFIXES) or text.lstrip().startswith(_FORMULA_PREFIXES):
         return "'" + text
     return text
 
@@ -26,7 +35,8 @@ def _rows_to_csv(headers: list[str], rows: list[list]) -> str:
     writer.writerow(headers)
     for row in rows:
         writer.writerow([sanitize_cell(cell) for cell in row])
-    return buffer.getvalue()
+    # UTF-8 BOM so Excel opens non-ASCII data (customer names, notes) correctly.
+    return "\ufeff" + buffer.getvalue()
 
 
 def export_companies(db: Session) -> str:

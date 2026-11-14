@@ -18,6 +18,7 @@ from app.schemas.import_ import ImportSummary, RowError
 from app.services import audit_service
 
 MAX_IMPORT_ROWS = 5000
+MAX_IMPORT_BYTES = 5_000_000  # bound the read before decoding, not after parsing
 MAX_REPORTED_ERRORS = 100
 
 COMPANY_COLUMNS = {"name", "website", "industry", "phone", "email", "address", "notes"}
@@ -74,8 +75,15 @@ class ContactRow(_BlankAsNone):
 
 
 def _read_csv(file: BinaryIO, required_columns: set[str], all_columns: set[str]) -> list[dict]:
+    # Read at most one byte over the limit: a huge upload is rejected before it
+    # is decoded into memory, and before any row is appended.
+    raw = file.read(MAX_IMPORT_BYTES + 1)
+    if len(raw) > MAX_IMPORT_BYTES:
+        raise BusinessRuleError(
+            f"CSV file exceeds the maximum size of {MAX_IMPORT_BYTES} bytes"
+        )
     try:
-        text = file.read().decode("utf-8-sig")
+        text = raw.decode("utf-8-sig")
     except UnicodeDecodeError as exc:
         raise BusinessRuleError("CSV file must be UTF-8 encoded") from exc
 
@@ -92,10 +100,10 @@ def _read_csv(file: BinaryIO, required_columns: set[str], all_columns: set[str])
         )
 
     rows = []
-    for row in reader:
-        rows.append({(k or "").strip().lower(): (v or "").strip() for k, v in row.items() if k})
-        if len(rows) > MAX_IMPORT_ROWS:
+    for index, row in enumerate(reader):
+        if index >= MAX_IMPORT_ROWS:
             raise BusinessRuleError(f"CSV file exceeds the maximum of {MAX_IMPORT_ROWS} rows")
+        rows.append({(k or "").strip().lower(): (v or "").strip() for k, v in row.items() if k})
     return rows
 
 

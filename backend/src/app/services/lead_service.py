@@ -103,8 +103,12 @@ def update_lead(db: Session, lead_id: str, data: LeadUpdate, actor: User) -> Lea
             contact_id=changes.get("contact_id", lead.contact_id),
             owner_id=None,
         )
-    if "owner_id" in changes and user_repo.get(db, changes["owner_id"]) is None:
-        raise BusinessRuleError("Owner does not exist")
+    if "owner_id" in changes:
+        owner_id = changes["owner_id"]
+        if owner_id is None:
+            raise BusinessRuleError("Owner cannot be null")
+        if user_repo.get(db, owner_id) is None:
+            raise BusinessRuleError("Owner does not exist")
 
     for field, value in changes.items():
         setattr(lead, field, value)

@@ -1,3 +1,5 @@
+from collections.abc import Iterator
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -13,12 +15,20 @@ from app.services.ai_service import AIService
 router = APIRouter(prefix="/ai", tags=["ai"])
 
 
-def get_ai_service() -> AIService:
+def get_ai_service() -> Iterator[AIService]:
+    """Yield the service so the provider's HTTP client is closed per request.
+
+    A plain dependency leaked one httpx connection pool on every AI call when
+    LLM_PROVIDER=openai; FastAPI runs the `finally` block after the response.
+    """
     try:
         provider = get_llm_provider()
     except LLMProviderError as exc:
         raise AIProviderError(str(exc)) from exc
-    return AIService(provider)
+    try:
+        yield AIService(provider)
+    finally:
+        provider.close()
 
 
 @router.post("/leads/{lead_id}/summary", response_model=AISummaryResponse)

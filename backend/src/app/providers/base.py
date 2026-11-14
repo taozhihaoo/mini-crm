@@ -72,3 +72,7 @@ class LLMProvider(ABC):
 
     @abstractmethod
     def draft_follow_up(self, context: LeadContext) -> FollowUpDraftResult: ...
+
+    def close(self) -> None:
+        """Release provider resources (HTTP connection pools, etc.). No-op by default."""
+        return None

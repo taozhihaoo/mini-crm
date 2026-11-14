@@ -36,6 +36,9 @@ def list_logs(db: Session, params: AuditLogListParams) -> tuple[list[AuditLog], 
         stmt = stmt.where(AuditLog.entity_type == params.entity_type)
 
     total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
-    stmt = stmt.order_by(AuditLog.created_at.desc())
+    sort_col = getattr(AuditLog, params.sort_by)
+    primary = sort_col.desc() if params.order == "desc" else sort_col.asc()
+    # created_at is a stable tie-breaker for equal actions/timestamps.
+    stmt = stmt.order_by(primary, AuditLog.created_at.desc())
     stmt = stmt.offset((params.page - 1) * params.page_size).limit(params.page_size)
     return list(db.scalars(stmt)), int(total)

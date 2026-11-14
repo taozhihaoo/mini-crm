@@ -32,3 +32,6 @@ Thumbs.db
 
 # TypeScript incremental build info
 *.tsbuildinfo
+
+# Local agent workspace data
+.workbuddy/

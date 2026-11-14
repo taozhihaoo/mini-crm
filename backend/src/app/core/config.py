@@ -62,6 +62,16 @@ def validate_runtime_settings(settings: Settings) -> None:
             "Refusing to start: SEED_DEMO_DATA=true is not allowed with ENVIRONMENT=production. "
             "Demo credentials and fictional data must never exist in a production deployment."
         )
+    if settings.jwt_algorithm not in {"HS256", "HS384", "HS512"}:
+        raise RuntimeError(
+            "Refusing to start: JWT_ALGORITHM must be one of HS256/HS384/HS512 "
+            "for shared-secret authentication."
+        )
+    if "*" in settings.cors_origin_list:
+        raise RuntimeError(
+            "Refusing to start: CORS_ORIGINS='*' is not allowed in production "
+            "because credentialed requests are enabled. List explicit origins."
+        )
 
 
 @lru_cache

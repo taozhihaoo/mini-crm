@@ -4,15 +4,26 @@ import bcrypt
 import jwt
 
 from app.core.config import get_settings
+from app.core.exceptions import BusinessRuleError
+
+# bcrypt silently truncates (older versions) or raises (bcrypt >= 5) beyond 72 bytes.
+BCRYPT_MAX_BYTES = 72
 
 
 def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    raw = password.encode("utf-8")
+    if len(raw) > BCRYPT_MAX_BYTES:
+        # Defense in depth: schemas reject this first with a 422, never a 500.
+        raise BusinessRuleError(f"Password must be at most {BCRYPT_MAX_BYTES} bytes")
+    return bcrypt.hashpw(raw, bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(password: str, password_hash: str) -> bool:
+    raw = password.encode("utf-8")
+    if len(raw) > BCRYPT_MAX_BYTES:
+        return False
     try:
-        return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+        return bcrypt.checkpw(raw, password_hash.encode("utf-8"))
     except ValueError:
         return False
 

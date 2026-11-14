@@ -14,7 +14,8 @@ router = APIRouter(tags=["import-export"])
 
 def _require_csv(file: UploadFile) -> None:
     name = (file.filename or "").lower()
-    if name and not name.endswith(".csv"):
+    # An empty filename must not bypass the extension check.
+    if not name.endswith(".csv"):
         raise BusinessRuleError("Only .csv files are supported")
 
 
