@@ -43,6 +43,8 @@ jobs:
       - name: Verify Alembic migration applies to PostgreSQL
         run: |
           DATABASE_URL="$TEST_DATABASE_URL" alembic upgrade head
+          # Fails when an ORM model changed without a matching migration.
+          DATABASE_URL="$TEST_DATABASE_URL" alembic check
           DATABASE_URL="$TEST_DATABASE_URL" alembic downgrade base
       - name: Run test suite
         run: pytest
@@ -70,6 +72,18 @@ jobs:
         run: npm test
       - name: Production build
         run: npm run build
+
+  docker:
+    name: Docker images build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Catches broken build contexts and Dockerfiles (e.g. a file copied but
+      # excluded by .dockerignore) that unit tests cannot detect.
+      - name: Build backend image
+        run: docker build --tag clientflow-backend ./backend
+      - name: Build frontend image
+        run: docker build --tag clientflow-frontend ./frontend
 
   secret-scan:
     name: Secret scan (gitleaks)
